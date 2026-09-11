@@ -6,7 +6,7 @@ window.SurvivorRPG.SpawnSystem = class SpawnSystem {
       ...zone,
       timer: Math.random() * 1.5
     }));
-    this.maxTotalEnemies = 8;
+    this.maxTotalEnemies = 10;
   }
 
   update(dt, enemies) {

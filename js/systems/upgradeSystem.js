@@ -66,11 +66,12 @@ window.SurvivorRPG.UpgradeSystem = class UpgradeSystem {
 
   makeRareChoice(player, used) {
     const candidates = [];
-    player.equippedMoves.forEach((moveId) => {
-      const upgradeLevel = player.moveUpgradeLevels[moveId] || 0;
+    player.equippedMoves.forEach((slot) => {
+      const moveId = typeof slot === "string" ? slot : slot.moveId;
+      const upgradeLevel = typeof slot === "string" ? (player.moveUpgradeLevels[moveId] || 0) : (slot.upgradeLevel || 0);
       const upgrades = this.config.moveUpgrades[moveId] || [];
-      const next = upgrades.find((upgrade) => upgrade.level === upgradeLevel + 1);
-      if (!next) return;
+      const next = upgrades.find((upgrade) => upgrade.level === upgradeLevel + 1) || this.genericMoveUpgrade(moveId, upgradeLevel + 1);
+      if (!next || next.level > 4) return;
       const id = `${moveId}_${next.level}`;
       if (used.has(id)) return;
       candidates.push({
@@ -95,9 +96,32 @@ window.SurvivorRPG.UpgradeSystem = class UpgradeSystem {
       return;
     }
     if (choice.type === "moveUpgrade") {
-      const current = player.moveUpgradeLevels[choice.moveId] || 0;
-      player.moveUpgradeLevels[choice.moveId] = Math.min(4, Math.max(current, choice.upgradeLevel));
+      const slot = player.equippedMoves.find((move) => (typeof move === "string" ? move : move.moveId) === choice.moveId);
+      const current = slot ? (slot.upgradeLevel || 0) : (player.moveUpgradeLevels[choice.moveId] || 0);
+      if (slot && typeof slot !== "string") {
+        slot.upgradeLevel = Math.min(4, Math.max(current, choice.upgradeLevel));
+        player.syncMoveState?.();
+      } else {
+        player.moveUpgradeLevels[choice.moveId] = Math.min(4, Math.max(current, choice.upgradeLevel));
+      }
     }
+  }
+
+  genericMoveUpgrade(moveId, level) {
+    const move = window.SurvivorRPG.MoveData[moveId];
+    if (!move || level < 1 || level > 4) return null;
+    const summaries = {
+      1: "범위 증가",
+      2: "추가 충격",
+      3: "쿨다운 감소",
+      4: "다중 판정"
+    };
+    return {
+      level,
+      title: `${move.name} ${level}`,
+      summary: summaries[level],
+      description: `${move.name}의 ${level}단계 공통 강화입니다.`
+    };
   }
 
   runDistributionTest(iterations = 10000) {

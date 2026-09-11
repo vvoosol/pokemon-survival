@@ -30,10 +30,13 @@ window.SurvivorRPG.MapData = {
       width: 540,
       height: 330,
       spawnTable: [
-        { pokemon: "rattata", weight: 60 },
-        { pokemon: "pidgey", weight: 40 }
+        { pokemon: "rattata", weight: 45 },
+        { pokemon: "pidgey", weight: 30 },
+        { pokemon: "caterpie", weight: 42 },
+        { pokemon: "oddish", weight: 22 },
+        { pokemon: "pikachu", weight: 8 }
       ],
-      maxAlive: 3,
+      maxAlive: 4,
       respawnMin: 5,
       respawnMax: 9
     },
@@ -44,10 +47,13 @@ window.SurvivorRPG.MapData = {
       width: 500,
       height: 280,
       spawnTable: [
-        { pokemon: "rattata", weight: 45 },
-        { pokemon: "pidgey", weight: 55 }
+        { pokemon: "pidgey", weight: 34 },
+        { pokemon: "poliwag", weight: 24 },
+        { pokemon: "vulpix", weight: 16 },
+        { pokemon: "abra", weight: 8 },
+        { pokemon: "pikachu", weight: 6 }
       ],
-      maxAlive: 2,
+      maxAlive: 3,
       respawnMin: 6,
       respawnMax: 10
     },
@@ -58,10 +64,14 @@ window.SurvivorRPG.MapData = {
       width: 580,
       height: 360,
       spawnTable: [
-        { pokemon: "rattata", weight: 70 },
-        { pokemon: "pidgey", weight: 30 }
+        { pokemon: "rattata", weight: 32 },
+        { pokemon: "machop", weight: 18 },
+        { pokemon: "geodude", weight: 24 },
+        { pokemon: "oddish", weight: 20 },
+        { pokemon: "vulpix", weight: 10 },
+        { pokemon: "abra", weight: 7 }
       ],
-      maxAlive: 3,
+      maxAlive: 4,
       respawnMin: 5,
       respawnMax: 11
     }

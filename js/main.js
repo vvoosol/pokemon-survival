@@ -4,7 +4,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   await game.init();
   document.getElementById("restartBtn").addEventListener("click", () => game.reset());
   document.getElementById("fullscreenBtn").addEventListener("click", async () => {
-    const frame = document.querySelector(".screen-frame");
+    const frame = document.getElementById("gameRoot");
     try {
       if (!document.fullscreenElement) {
         await frame.requestFullscreen();

@@ -17,15 +17,56 @@ window.SurvivorRPG.StatSystem = class StatSystem {
   }
 
   calculateDamage(attacker, defender, move) {
+    return this.calculateDamageBreakdown(attacker, defender, move).finalDamage;
+  }
+
+  calculateDamageBreakdown(attacker, defender, move) {
     const attackStat = move.category === "physical" ? attacker.attack : attacker.specialAttack;
     const defenseStat = move.category === "physical" ? defender.defense : defender.specialDefense;
     const base = (((2 * attacker.level / 5 + 2) * move.power * attackStat / Math.max(1, defenseStat)) / 50) + 2;
+    const stab = attacker.types?.includes(move.type) ? 1.5 : 1;
+    const type = window.SurvivorRPG.DataAdapter?.typeMultiplier(move.type, defender.types) ?? 1;
+    const beforeAbility = window.SurvivorRPG.AbilityRuntime?.beforeDamage(defender, move) || { immune: false, label: "-" };
+    const ability = window.SurvivorRPG.AbilityRuntime?.damageModifier(attacker, defender, move, { base, stab, type }) || { multiplier: 1, label: "-" };
     const variance = 0.9 + Math.random() * 0.15;
-    return Math.max(1, Math.floor(base * variance));
+    const raw = beforeAbility.immune ? 0 : base * stab * type * ability.multiplier * variance;
+    return {
+      move: move.name,
+      baseDamage: base,
+      attackStat,
+      defenseStat,
+      stab,
+      type,
+      ability: ability.multiplier,
+      abilityLabel: beforeAbility.immune ? beforeAbility.label : ability.label,
+      finalDamage: type === 0 || beforeAbility.immune ? 0 : Math.max(1, Math.floor(raw))
+    };
+  }
+
+  calculateNativeStats(species, level) {
+    const base = species.baseStats || {
+      hp: species.maxHp,
+      attack: species.attack,
+      defense: species.defense,
+      specialAttack: species.specialAttack,
+      specialDefense: species.specialDefense,
+      speed: species.speed
+    };
+    return {
+      maxHp: Math.floor((2 * base.hp * level) / 100) + level + 10,
+      attack: Math.floor((2 * base.attack * level) / 100) + 5,
+      defense: Math.floor((2 * base.defense * level) / 100) + 5,
+      specialAttack: Math.floor((2 * base.specialAttack * level) / 100) + 5,
+      specialDefense: Math.floor((2 * base.specialDefense * level) / 100) + 5,
+      speed: Math.floor((2 * base.speed * level) / 100) + 5
+    };
   }
 
   applyNativeStatGrowth(entity) {
-    if (!entity.nativeStats) return;
+    if (!entity.nativeStats) return null;
+    if (entity.speciesId && window.SurvivorRPG.PokemonData?.[entity.speciesId]) {
+      return this.applyNativeStatsForLevel(entity);
+    }
     const beforeMaxHp = entity.maxHp;
     entity.nativeStats.maxHp += 5;
     entity.nativeStats.attack += 3;
@@ -35,6 +76,21 @@ window.SurvivorRPG.StatSystem = class StatSystem {
     entity.nativeStats.speed += 3;
     this.recalculateStats(entity);
     entity.hp = Math.min(entity.maxHp, entity.hp + Math.max(0, entity.maxHp - beforeMaxHp));
+    return { beforeMaxHp, afterMaxHp: entity.maxHp };
+  }
+
+  applyNativeStatsForLevel(entity) {
+    const species = window.SurvivorRPG.PokemonData[entity.speciesId];
+    const beforeMaxHp = entity.maxHp;
+    entity.nativeStats = this.calculateNativeStats(species, entity.level);
+    this.recalculateStats(entity);
+    const gainedHp = Math.max(0, entity.maxHp - beforeMaxHp);
+    if (!entity.dead && !entity.fainted) {
+      entity.hp = Math.min(entity.maxHp, entity.hp + gainedHp);
+    } else {
+      entity.hp = 0;
+    }
+    return { beforeMaxHp, afterMaxHp: entity.maxHp };
   }
 
   applyGrowthBonuses(entity, bonuses) {

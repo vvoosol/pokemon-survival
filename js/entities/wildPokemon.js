@@ -10,11 +10,22 @@ window.SurvivorRPG.WildPokemon = class WildPokemon extends window.SurvivorRPG.En
     this.attackRange = data.attackRange;
     this.attackCooldown = Math.random() * 1.2;
     this.expReward = data.expReward;
+    this.equippedMoves = (data.learnset || [])
+      .filter((entry) => entry.level <= this.level)
+      .map((entry) => entry.moveId)
+      .filter((moveId) => {
+        const move = window.SurvivorRPG.MoveData[moveId];
+        return move && move.power > 0;
+      })
+      .filter((moveId, index, list) => list.indexOf(moveId) === index)
+      .slice(-2);
+    if (!this.equippedMoves.length) this.equippedMoves = [data.wildMove || "wildBite"];
     this.state = "idle";
     this.roamTimer = 0.5 + Math.random() * 1.8;
     this.roamVector = { x: 0, y: 0 };
     this.alertTime = 0;
     this.windup = 0;
+    this.participants = new Set();
   }
 
   takeDamage(amount, knockbackX = 0, knockbackY = 0) {
