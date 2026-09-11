@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Scientist RPG - Auto Battle Stage 3</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="gameRoot" class="game-root">
+    <div id="orientationNotice" class="orientation-notice">
+      가로 화면으로 플레이하면 더 편하게 즐길 수 있습니다.
+    </div>
+
+    <section class="screen-frame" aria-label="Pokemon survivor RPG prototype">
+      <canvas id="gameCanvas" width="1280" height="720" aria-label="Game field"></canvas>
+
+      <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="전체화면 전환">
+        전체화면
+      </button>
+
+      <div class="hud-panel player-hud">
+        <div class="hud-title">
+          <strong id="playerName">이상해씨</strong>
+          <span id="playerLevel">Lv.5</span>
+        </div>
+        <div class="meter-row">
+          <span>HP</span>
+          <div class="meter hp-meter"><div id="hpFill"></div></div>
+        </div>
+        <div class="meter-row">
+          <span>EXP</span>
+          <div class="meter exp-meter"><div id="expFill"></div></div>
+        </div>
+        <div class="meter-row text-row">
+          <span>BALL</span>
+          <strong id="ballCount">x10</strong>
+        </div>
+      </div>
+
+      <div class="hud-panel move-hud">
+        <div class="hud-title">
+          <strong id="moveName">몸통박치기</strong>
+          <span id="moveReady">READY</span>
+        </div>
+        <div class="meter-row wide">
+          <span>CD</span>
+          <div class="meter cooldown-meter"><div id="cooldownFill"></div></div>
+        </div>
+      </div>
+
+      <div id="collectionPanel" class="collection-panel"></div>
+
+      <div id="levelToast" class="level-toast" hidden>LEVEL UP!</div>
+      <div id="messageBox" class="message-box" hidden></div>
+
+      <div id="levelChoiceOverlay" class="level-choice-overlay" hidden>
+        <section class="level-choice-box" aria-label="Level up choices">
+          <p class="choice-eyebrow">LEVEL UP!</p>
+          <h1 id="choiceTitle">이상해씨 Lv.6</h1>
+          <div id="choiceCards" class="choice-cards"></div>
+        </section>
+      </div>
+
+      <div id="debugPanel" class="debug-panel" hidden></div>
+
+      <div id="gameOver" class="game-over" hidden>
+        <div class="game-over-box">
+          <h1>이상해씨가 쓰러졌다!</h1>
+          <button id="restartBtn" type="button">다시 시작</button>
+        </div>
+      </div>
+
+      <div class="touch-zone" aria-label="Virtual joystick">
+        <div id="joystick" class="joystick">
+          <div id="joystickKnob" class="joystick-knob"></div>
+        </div>
+      </div>
+
+      <div class="action-cluster" aria-label="Action buttons">
+        <button id="switchActionBtn" class="action-button" type="button">
+          <span id="switchActionLabel">Z / 출전</span>
+        </button>
+        <button id="ballActionBtn" class="action-button ball-button" type="button">
+          <img src="assets/items/pokeball.png" alt="" aria-hidden="true">
+          <span>BALL</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/data/pokemonData.js"></script>
+  <script src="js/data/moveData.js"></script>
+  <script src="js/data/ballData.js"></script>
+  <script src="js/data/upgradeData.js"></script>
+  <script src="js/data/mapData.js"></script>
+  <script src="js/assets.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/entities/entity.js"></script>
+  <script src="js/entities/trainer.js"></script>
+  <script src="js/entities/playerPokemon.js"></script>
+  <script src="js/entities/wildPokemon.js"></script>
+  <script src="js/systems/statSystem.js"></script>
+  <script src="js/systems/movementSystem.js"></script>
+  <script src="js/systems/combatSystem.js"></script>
+  <script src="js/systems/captureSystem.js"></script>
+  <script src="js/systems/spawnSystem.js"></script>
+  <script src="js/systems/upgradeSystem.js"></script>
+  <script src="js/ui/uiManager.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
