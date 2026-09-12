@@ -128,7 +128,7 @@ window.SurvivorRPG.WildPokemon = class WildPokemon extends window.SurvivorRPG.En
       ctx.fillStyle = "#ffffff";
       ctx.strokeStyle = "#202020";
       ctx.lineWidth = 4;
-      ctx.font = "bold 26px Segoe UI, Arial";
+      ctx.font = "bold 26px FusionPokemon, Segoe UI, Arial";
       ctx.textAlign = "center";
       ctx.strokeText("!", screenX, screenY);
       ctx.fillText("!", screenX, screenY);

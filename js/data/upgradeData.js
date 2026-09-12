@@ -7,7 +7,8 @@ window.SurvivorRPG.UpgradeData = {
     hero: 8,
     legendary: 2
   },
-  stage2EnabledRarities: ["common", "rare"],
+  enabledRarities: ["common", "rare", "hero", "legendary"],
+  stage2EnabledRarities: ["common", "rare", "hero", "legendary"],
   commonChoices: [
     {
       id: "max_hp_common",

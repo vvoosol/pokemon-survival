@@ -7,8 +7,6 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.moveCooldownList = document.getElementById("moveCooldownList");
     this.playerName = document.getElementById("playerName");
     this.playerLevel = document.getElementById("playerLevel");
-    this.moveName = document.getElementById("moveName");
-    this.moveReady = document.getElementById("moveReady");
     this.ballCount = document.getElementById("ballCount");
     this.debugPanel = document.getElementById("debugPanel");
     this.levelToast = document.getElementById("levelToast");
@@ -20,6 +18,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.collectionPanel = document.getElementById("collectionPanel");
     this.partyPanel = document.getElementById("partyPanel");
     this.switchActionLabel = document.getElementById("switchActionLabel");
+    this.xActionLabel = document.getElementById("xActionLabel");
     this.ballActionBtn = document.getElementById("ballActionBtn");
     this.partyActionBtn = document.getElementById("partyActionBtn");
     this.menuOverlay = document.getElementById("mainMenuOverlay");
@@ -32,7 +31,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     const move = window.SurvivorRPG.MoveData[primarySlot.moveId] || window.SurvivorRPG.MoveData.tackle;
     const upgradeLevel = primarySlot.upgradeLevel || 0;
     const maxCooldown = game.statSystem.calculateMoveCooldown(move, player.speed, upgradeLevel);
-    const nextReadyRatio = this.nextReadyRatio(game, player);
+
     this.playerName.textContent = player.name;
     this.playerLevel.textContent = `Lv.${player.level} · ${this.modeLabel(game.mode)}`;
     this.hpFill.style.width = `${Math.max(0, player.hp / player.maxHp) * 100}%`;
@@ -40,30 +39,19 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.renderMoveCooldowns(game, player);
     this.ballCount.textContent = `x${game.balls.pokeBall}`;
 
-    if (game.mode === "trainer") {
-      this.moveName.textContent = "Trainer Mode";
-      this.moveReady.textContent = "Z / 출전";
-    } else if (game.mode === "transition") {
-      this.moveName.textContent = "전환 중";
-      this.moveReady.textContent = "...";
-    } else {
-      this.moveName.textContent = "기술 쿨타임";
-      this.moveReady.textContent = player.equippedMoves.some((slot) => slot.cooldownRemaining <= 0) ? "READY" : `${Math.min(...player.equippedMoves.map((slot) => slot.cooldownRemaining)).toFixed(1)}s`;
-    }
-
-    this.switchActionLabel.textContent = game.mode === "pokemon" ? "Z / 회수" : "Z / 출전";
-    this.ballActionBtn.disabled = game.mode !== "trainer" || game.balls.pokeBall <= 0;
+    this.switchActionLabel.textContent = this.zActionText(game);
+    this.xActionLabel.textContent = this.xActionText(game);
+    this.ballActionBtn.disabled = game.mode === "trainer" && game.balls.pokeBall <= 0;
     this.partyActionBtn.disabled = game.partyPokemon.filter((pokemon) => pokemon && !pokemon.dead).length < 2;
 
     this.levelToast.hidden = game.combatSystem.levelToastTime <= 0;
-    if (!this.levelToast.hidden) {
-      this.levelToast.textContent = `LEVEL UP! ${player.name} Lv.${player.level}`;
-    }
+    if (!this.levelToast.hidden) this.levelToast.textContent = `LEVEL UP! ${player.name} Lv.${player.level}`;
+
     this.messageBox.hidden = game.messageTimer <= 0;
     if (!this.messageBox.hidden) this.messageBox.textContent = game.messageText;
     this.gameOver.hidden = game.mode !== "gameOver";
 
-    this.collectionPanel.textContent = `보유 ${game.ownedPokemon.length} / 예비 ${game.reservePokemon.length}`;
+    this.collectionPanel.textContent = `보유 ${game.ownedPokemon.length} / 예비 ${game.reservePokemon.length} / ${game.money || 0}원`;
     this.renderParty(game);
 
     if (game.debug) {
@@ -107,56 +95,26 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.moveCooldownList.innerHTML = "";
     const slots = [...player.equippedMoves];
     while (slots.length < 4) slots.push(null);
-
-    slots.forEach((slot, index) => {
+    slots.forEach((slot) => {
       const row = document.createElement("div");
       row.className = "move-cooldown-row";
       if (!slot) {
         row.classList.add("empty");
-        row.innerHTML = `
-          <span class="move-index">${index + 1}</span>
-          <span class="move-label">-</span>
-          <div class="meter cooldown-meter"><div style="width:0%"></div></div>
-          <span class="move-time">--</span>
-        `;
+        row.innerHTML = `<span class="move-label">-</span><div class="meter cooldown-meter"><div style="width:0%"></div></div>`;
         this.moveCooldownList.appendChild(row);
         return;
       }
-
       const move = window.SurvivorRPG.MoveData[slot.moveId];
       const cooldown = move ? game.statSystem.calculateMoveCooldown(move, player.speed, slot.upgradeLevel || 0) : 1;
       const remaining = slot.cooldownRemaining || 0;
       const ratio = game.mode === "pokemon" ? 1 - Math.min(1, remaining / cooldown) : 0;
-      const ready = game.mode === "pokemon" && remaining <= 0;
-      if (ready) row.classList.add("ready");
+      if (game.mode === "pokemon" && remaining <= 0) row.classList.add("ready");
       row.innerHTML = `
-        <span class="move-index">${index + 1}</span>
         <span class="move-label">${move ? move.name : slot.moveId}${slot.upgradeLevel ? ` +${slot.upgradeLevel}` : ""}</span>
         <div class="meter cooldown-meter"><div style="width:${ratio * 100}%"></div></div>
-        <span class="move-time">${ready ? "OK" : `${remaining.toFixed(1)}s`}</span>
       `;
       this.moveCooldownList.appendChild(row);
     });
-  }
-
-  nextReadyRatio(game, player) {
-    if (game.mode !== "pokemon" || !player.equippedMoves.length) return 0;
-    const ratios = player.equippedMoves.map((slot) => {
-      const move = window.SurvivorRPG.MoveData[slot.moveId];
-      if (!move) return 0;
-      const cooldown = game.statSystem.calculateMoveCooldown(move, player.speed, slot.upgradeLevel || 0);
-      return 1 - Math.min(1, (slot.cooldownRemaining || 0) / cooldown);
-    });
-    return Math.max(...ratios);
-  }
-
-  moveListText(player) {
-    return player.equippedMoves
-      .map((slot) => {
-        const move = window.SurvivorRPG.MoveData[slot.moveId];
-        return move ? `${move.name}${slot.upgradeLevel ? ` +${slot.upgradeLevel}` : ""}` : slot.moveId;
-      })
-      .join(" / ");
   }
 
   modeLabel(mode) {
@@ -168,6 +126,18 @@ window.SurvivorRPG.UIManager = class UIManager {
       moveLearn: "Move Learn",
       gameOver: "Game Over"
     }[mode] || mode;
+  }
+
+  zActionText(game) {
+    if (game.menuOpen || game.mode === "levelChoice" || game.mode === "moveLearn") return "YES";
+    if (game.nearbyNpc) return "대화";
+    return game.mode === "pokemon" ? "회수" : "출전";
+  }
+
+  xActionText(game) {
+    if (game.menuOpen || game.mode === "levelChoice" || game.mode === "moveLearn") return "BACK";
+    if (game.mode === "pokemon") return "교체";
+    return "BALL";
   }
 
   debugText(game, player, move, upgradeLevel, maxCooldown) {
@@ -188,12 +158,22 @@ window.SurvivorRPG.UIManager = class UIManager {
     return [
       `FPS: ${game.fps.toFixed(0)}`,
       `Mode: ${game.mode}`,
+      `Map: ${game.currentMapId} / ${game.map.name}`,
+      `Area: ${game.currentHuntingArea || "-"}`,
+      `Nearby NPC: ${game.nearbyNpc ? `${game.nearbyNpc.type}:${game.nearbyNpc.name}` : "-"}`,
+      `Money: ${game.money || 0}`,
+      `Exp Share: ${game.items.expShare ? "ON" : "OFF"}`,
       `Trainer X/Y: ${game.trainer.x.toFixed(0)}, ${game.trainer.y.toFixed(0)}`,
       `Pokemon X/Y: ${player.x.toFixed(0)}, ${player.y.toFixed(0)}`,
       `Pokemon Speed Stat: ${player.speed}`,
+      `Move Speed: ${player.movementSpeed.toFixed(0)}`,
       `Native Stats: HP ${player.nativeStats.maxHp} / Atk ${player.nativeStats.attack} / Def ${player.nativeStats.defense} / SpA ${player.nativeStats.specialAttack} / SpD ${player.nativeStats.specialDefense} / Spe ${player.nativeStats.speed}`,
       `Growth Bonus: HP ${(player.growthBonuses.maxHpPct * 100).toFixed(0)}% / Atk ${(player.growthBonuses.attackPct * 100).toFixed(0)}% / Def ${(player.growthBonuses.defensePct * 100).toFixed(0)}% / SpA ${(player.growthBonuses.specialAttackPct * 100).toFixed(0)}% / SpD ${(player.growthBonuses.specialDefensePct * 100).toFixed(0)}% / Spe ${(player.growthBonuses.speedPct * 100).toFixed(0)}%`,
       `Species: ${player.speciesId}`,
+      `Ability: ${player.abilityId || "-"}`,
+      `Base Types: ${(player.baseTypes || player.types || []).join("/") || "-"}`,
+      `Tera Type: ${player.teraType || "-"}`,
+      `Active Types: ${game.statSystem.activeTypes(player).join("/") || "-"}`,
       `Base Stats: ${this.baseStatsText(player.data?.baseStats)}`,
       `Move Upgrade: ${move.name} ${upgradeLevel}/4`,
       `Moves: ${this.debugMoves(game, player)}`,
@@ -202,6 +182,7 @@ window.SurvivorRPG.UIManager = class UIManager {
       `Next Move: ${this.nextLearnsetText(player)}`,
       `Hidden Ability: ${(window.SurvivorRPG.DataAdapter.getHiddenAbilities(player.speciesId) || []).join(", ") || "-"}`,
       `TM Ready: ${(window.SurvivorRPG.DataAdapter.getTMLearnset(player.speciesId) || []).join(", ") || "-"}`,
+      `Legendary TM Candidates: ${this.legendaryTmText(player)}`,
       `Data Warnings: ${(window.SurvivorRPG.DataWarnings || []).length}`,
       `Balls: ${game.balls.pokeBall}`,
       ...captureLines,
@@ -214,7 +195,8 @@ window.SurvivorRPG.UIManager = class UIManager {
       `Last Rarity Roll: ${game.upgradeSystem.lastRolls.join(", ") || "-"}`,
       `Enemy Count: ${game.enemies.filter((enemy) => !enemy.dead).length}`,
       `Spawn Zone: ${game.spawnSystem.zones.length}`,
-      "F3: instant EXP / F4: force rare / F5: target HP 20%"
+      ...game.spawnSystem.zones.map((zone) => `- ${zone.id} ${zone.spawnStyle} Lv.${zone.levelMin}-${zone.levelMax}: ${zone.spawnTable.map((item) => item.speciesId || item.pokemon).join("/")}`),
+      "F3: instant EXP / F4: rare / F5: target HP 20% / F6: common / F7: hero / F8: legendary"
     ].join("\n");
   }
 
@@ -256,6 +238,14 @@ window.SurvivorRPG.UIManager = class UIManager {
     return `Lv.${next.level} ${move.name}`;
   }
 
+  legendaryTmText(player) {
+    const adapter = window.SurvivorRPG.DataAdapter;
+    return adapter.getCompatibleTMMoves(player.speciesId)
+      .filter((moveId) => !player.knowsMove?.(moveId))
+      .map((moveId) => adapter.getMoveData(moveId)?.name || moveId)
+      .join(", ") || "-";
+  }
+
   showLevelChoices(event, choices, onSelect) {
     const pokemonName = event.pokemon?.name || "포켓몬";
     this.choiceTitle.textContent = `${pokemonName} Lv.${event.toLevel}`;
@@ -287,7 +277,7 @@ window.SurvivorRPG.UIManager = class UIManager {
   showMoveLearning(learn, onSelect) {
     const pokemon = learn.pokemon;
     const newMove = window.SurvivorRPG.MoveData[learn.moveId];
-    this.choiceTitle.textContent = `${pokemon.name}은(는) ${newMove.name}을 배우려 한다`;
+    this.choiceTitle.textContent = `${pokemon.name}은(는) ${newMove.name}을 배우려고 한다`;
     this.choiceCards.innerHTML = "";
     pokemon.equippedMoves.forEach((slot, index) => {
       const move = window.SurvivorRPG.MoveData[slot.moveId];
@@ -298,9 +288,7 @@ window.SurvivorRPG.UIManager = class UIManager {
       card.innerHTML = this.moveCardHtml(
         move,
         slot.upgradeLevel || 0,
-        learn.confirmForgetIndex === index
-          ? "한 번 더 누르면 이 기술과 강화가 사라집니다."
-          : "이 기술을 잊고 새 기술을 배웁니다.",
+        learn.confirmForgetIndex === index ? "한 번 더 누르면 이 기술과 강화가 사라집니다." : "이 기술을 잊고 새 기술을 배웁니다.",
         index + 1
       );
       card.addEventListener("click", () => onSelect(index));
@@ -310,7 +298,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     const skip = document.createElement("button");
     skip.type = "button";
     skip.className = "choice-card move-card skip";
-    skip.innerHTML = this.moveCardHtml(newMove, 0, "새 기술을 배우지 않습니다.", 5, "새 기술");
+    skip.innerHTML = this.moveCardHtml(newMove, 0, "새 기술을 배우지 않습니다.", 5, "배우지 않기");
     skip.addEventListener("click", () => onSelect(4));
     this.choiceCards.appendChild(skip);
     this.choiceOverlay.hidden = false;
@@ -336,6 +324,10 @@ window.SurvivorRPG.UIManager = class UIManager {
     if (game.menuView === "pokemon") this.renderPokemonMenu(game);
     else if (game.menuView === "summary") this.renderSummaryMenu(game, game.menuSelectedPokemonIndex);
     else if (game.menuView === "pokedex") this.renderPokedexMenu(game);
+    else if (game.menuView === "areaSelect") this.renderAreaSelectMenu(game);
+    else if (game.menuView === "bag") this.renderBagMenu(game);
+    else if (game.menuView === "bagTarget") this.renderBagTargetMenu(game);
+    else if (game.menuView === "mart") this.renderMartMenu(game);
     else if (game.menuView === "report") this.renderReportMenu(game);
     else this.renderMainMenu(game);
   }
@@ -351,6 +343,8 @@ window.SurvivorRPG.UIManager = class UIManager {
       <div class="menu-grid">
         <button data-view="pokedex"><img src="assets/ui/menuPokedex.png" alt="">Pokédex</button>
         <button data-view="pokemon"><img src="assets/ui/menuPokemon.png" alt="">Pokémon</button>
+        <button data-view="bag"><img src="assets/items/pokeball.png" alt="">Bag</button>
+        <button data-view="mart"><img src="assets/items/pokeball.png" alt="">Mart</button>
         <button data-view="report"><img src="assets/ui/menuSave.png" alt="">Report / Save</button>
         <button data-action="close"><img src="assets/ui/menuQuit.png" alt="">닫기</button>
       </div>
@@ -361,7 +355,7 @@ window.SurvivorRPG.UIManager = class UIManager {
 
   renderPokemonMenu(game) {
     this.menuRoot.innerHTML = `
-      <div class="menu-title">POKéMON</div>
+      <div class="menu-title">POKÉMON</div>
       <div class="party-menu-list"></div>
       <div class="menu-footer">
         <button data-action="back">뒤로</button>
@@ -378,8 +372,8 @@ window.SurvivorRPG.UIManager = class UIManager {
         <span>Lv.${pokemon.level}</span>
         <span>HP ${pokemon.hp}/${pokemon.maxHp}</span>
         <button data-summary="${index}">상태</button>
-        <button data-up="${index}" ${index === 0 ? "disabled" : ""}>▲</button>
-        <button data-down="${index}" ${index === game.partyPokemon.length - 1 ? "disabled" : ""}>▼</button>
+        <button data-up="${index}" ${index === 0 ? "disabled" : ""}>위</button>
+        <button data-down="${index}" ${index === game.partyPokemon.length - 1 ? "disabled" : ""}>아래</button>
       `;
       list.appendChild(row);
     });
@@ -393,6 +387,9 @@ window.SurvivorRPG.UIManager = class UIManager {
   renderSummaryMenu(game, index) {
     const pokemon = game.partyPokemon[index] || game.partyPokemon[0];
     const ability = window.SurvivorRPG.DataAdapter.getAbilityData(pokemon.abilityId);
+    const baseTypes = (pokemon.baseTypes || pokemon.types || []).map((type) => type.toUpperCase()).join(" / ");
+    const teraType = pokemon.teraType ? pokemon.teraType.toUpperCase() : "None";
+    const activeTypes = game.statSystem.activeTypes(pokemon).map((type) => type.toUpperCase()).join(" / ");
     this.menuRoot.innerHTML = `
       <div class="menu-title">SUMMARY</div>
       <div class="summary-layout">
@@ -400,7 +397,9 @@ window.SurvivorRPG.UIManager = class UIManager {
           <img src="${pokemon.data.sprite}" alt="">
           <h2>${pokemon.name}</h2>
           <p>No.${pokemon.data.dexNo || "-"} ${pokemon.data.name} · Lv.${pokemon.level}</p>
-          <p>${pokemon.types.map((type) => type.toUpperCase()).join(" / ")}</p>
+          <p>Base: ${baseTypes}</p>
+          <p>Tera: ${teraType}</p>
+          <p>Active: ${activeTypes}</p>
           <p>특성: <strong>${ability.name}</strong></p>
           <p>${ability.description}</p>
         </div>
@@ -411,6 +410,7 @@ window.SurvivorRPG.UIManager = class UIManager {
           <p>Sp. Attack ${pokemon.specialAttack}</p>
           <p>Sp. Defense ${pokemon.specialDefense}</p>
           <p>Speed ${pokemon.speed}</p>
+          <p>Move Speed ${pokemon.movementSpeed.toFixed(0)}</p>
         </div>
         <div class="summary-moves"></div>
       </div>
@@ -434,7 +434,7 @@ window.SurvivorRPG.UIManager = class UIManager {
   renderPokedexMenu(game) {
     const species = Object.values(window.SurvivorRPG.PokemonData).sort((a, b) => (a.dexNo || 999) - (b.dexNo || 999));
     this.menuRoot.innerHTML = `
-      <div class="menu-title">POKéDEX</div>
+      <div class="menu-title">POKÉDEX</div>
       <div class="pokedex-list"></div>
       <div class="menu-footer">
         <button data-action="back">뒤로</button>
@@ -468,11 +468,13 @@ window.SurvivorRPG.UIManager = class UIManager {
         <p>Owned ${game.ownedPokemon.length}</p>
         <p>Pokédex Seen ${seen} / Caught ${caught}</p>
         <p>Ball ${game.balls.pokeBall}</p>
+        <p>Money ${game.money || 0}원</p>
+        <p>Exp Share ${game.items.expShare ? "ON" : "OFF"}</p>
         <p>Save Version ${game.saveVersion}</p>
       </div>
       <div class="menu-grid">
         <button data-action="save">저장</button>
-        <button data-action="load">이어하기</button>
+        <button data-action="load">불러오기</button>
         <button data-action="back">뒤로</button>
         <button data-action="close">닫기</button>
       </div>
@@ -481,6 +483,96 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.bindMenuButton("[data-action='load']", () => game.loadGame());
     this.bindMenuButton("[data-action='back']", () => game.openMenuView("main"));
     this.bindMenuButton("[data-action='close']", () => game.toggleMenu());
+  }
+
+  renderAreaSelectMenu(game) {
+    this.menuRoot.innerHTML = `
+      <div class="menu-title">사냥터 선택</div>
+      <div class="party-menu-list"></div>
+      <div class="menu-footer">
+        <button data-action="back">뒤로</button>
+        <button data-action="close">닫기</button>
+      </div>
+    `;
+    const list = this.menuRoot.querySelector(".party-menu-list");
+    window.SurvivorRPG.HuntingAreas.forEach((area) => {
+      const row = document.createElement("div");
+      row.className = "party-menu-row area-row";
+      row.innerHTML = `
+        <strong>${area.name}</strong>
+        <span>Lv.${area.recommendedLevelMin}~${area.recommendedLevelMax}</span>
+        <span>${window.SurvivorRPG.Maps[area.mapId].spawnZones.length} zones</span>
+        <button data-area="${area.id}">이동</button>
+      `;
+      list.appendChild(row);
+    });
+    this.bindMenuButton("[data-area]", (button) => game.travelToArea(button.dataset.area));
+    this.bindMenuButton("[data-action='back']", () => game.openMenuView("main"));
+    this.bindMenuButton("[data-action='close']", () => game.toggleMenu());
+  }
+
+  renderBagMenu(game) {
+    this.menuRoot.innerHTML = `
+      <div class="menu-title">BAG</div>
+      <div class="report-box">
+        <p>Money ${game.money || 0}원</p>
+        <p>몬스터볼 x${game.balls.pokeBall}</p>
+        <p>상처약 x${game.items.potion || 0}</p>
+        <p>학습장치 ${game.items.expShare ? "ON" : "OFF"}</p>
+      </div>
+      <div class="menu-grid">
+        <button data-use="potion" ${game.items.potion > 0 ? "" : "disabled"}>상처약 사용</button>
+        <button data-action="back">뒤로</button>
+      </div>
+    `;
+    this.bindMenuButton("[data-use='potion']", () => game.startBagUse("potion"));
+    this.bindMenuButton("[data-action='back']", () => game.openMenuView("main"));
+  }
+
+  renderBagTargetMenu(game) {
+    this.menuRoot.innerHTML = `
+      <div class="menu-title">상처약 대상</div>
+      <div class="party-menu-list"></div>
+      <div class="menu-footer">
+        <button data-action="back">뒤로</button>
+      </div>
+    `;
+    const list = this.menuRoot.querySelector(".party-menu-list");
+    game.partyPokemon.forEach((pokemon, index) => {
+      const row = document.createElement("div");
+      row.className = "party-menu-row";
+      row.innerHTML = `
+        <img src="${pokemon.data.icon || pokemon.data.sprite}" alt="">
+        <strong>${pokemon.name}</strong>
+        <span>Lv.${pokemon.level}</span>
+        <span>HP ${pokemon.hp}/${pokemon.maxHp}</span>
+        <button data-potion-target="${index}" ${pokemon.hp >= pokemon.maxHp || pokemon.dead ? "disabled" : ""}>사용</button>
+      `;
+      list.appendChild(row);
+    });
+    this.bindMenuButton("[data-potion-target]", (button) => game.usePotion(Number(button.dataset.potionTarget)));
+    this.bindMenuButton("[data-action='back']", () => game.openMenuView("bag"));
+  }
+
+  renderMartMenu(game) {
+    const items = window.SurvivorRPG.ItemData;
+    this.menuRoot.innerHTML = `
+      <div class="menu-title">POKE MART</div>
+      <div class="report-box">
+        <p>Money ${game.money || 0}원</p>
+        <p>${items.pokeBall.name} x${game.balls.pokeBall}</p>
+        <p>${items.potion.name} x${game.items.potion || 0}</p>
+        <p>${items.expShare.name} ${game.items.expShare ? "ON" : "OFF"}</p>
+      </div>
+      <div class="menu-grid">
+        <button data-buy="pokeBall">${items.pokeBall.name} ${items.pokeBall.price}원</button>
+        <button data-buy="potion">${items.potion.name} ${items.potion.price}원</button>
+        <button data-buy="expShare" ${game.items.expShare ? "disabled" : ""}>${items.expShare.name} ${items.expShare.price}원</button>
+        <button data-action="back">뒤로</button>
+      </div>
+    `;
+    this.bindMenuButton("[data-buy]", (button) => game.buyItem(button.dataset.buy));
+    this.bindMenuButton("[data-action='back']", () => game.openMenuView("main"));
   }
 
   bindMenuButton(selector, handler) {

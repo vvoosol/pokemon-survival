@@ -70,18 +70,18 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     metapod: s("METAPOD", "단데기", ["bug"], [50, 60, 55, 30, 25, 25], 9, "medium", 120, 72, "metapod", 76, 22, 1.0, [9, "BUGBITE"], [{ method: "level", level: 16, target: "butterfree" }]),
     butterfree: s("BUTTERFREE", "버터플", ["bug", "flying"], [60, 45, 50, 90, 100, 100], 16, "medium", 45, 198, "butterfree", 142, 27, 1.12, [1, "GUST", 1, "TACKLE", 1, "BUGBITE", 8, "CONFUSION", 16, "PSYBEAM"]),
 
-    pikachu: s("PIKACHU", "피카츄", ["electric"], [35, 55, 30, 90, 50, 40], 5, "medium", 190, 112, "pikachu", 168, 22, 1.08, [1, "THUNDERSHOCK", 1, "QUICKATTACK", 1, "TACKLE", 12, "ELECTROBALL", 20, "SPARK", 36, "THUNDERBOLT"], [{ method: "item", item: "thunderStone", target: "raichu" }]),
+    pikachu: s("PIKACHU", "피카츄", ["electric"], [35, 55, 30, 90, 50, 40], 5, "medium", 190, 112, "pikachu", 168, 22, 1.08, [1, "THUNDERSHOCK", 1, "QUICKATTACK", 1, "TACKLE", 12, "ELECTROBALL", 20, "SPARK", 36, "THUNDERBOLT"], [{ method: "level", level: 26, target: "raichu" }]),
     raichu: s("RAICHU", "라이츄", ["electric"], [60, 90, 55, 110, 90, 80], 26, "medium", 75, 243, "raichu", 188, 26, 1.14, [1, "THUNDERSHOCK", 1, "QUICKATTACK", 1, "SPARK", 5, "THUNDERBOLT"]),
 
     oddish: s("ODDISH", "뚜벅쵸", ["grass", "poison"], [45, 50, 55, 30, 75, 65], 4, "parabolic", 255, 64, "oddish", 102, 21, 1.0, [1, "ABSORB", 4, "ACID", 12, "MEGADRAIN", 20, "GIGADRAIN"], [{ method: "level", level: 21, target: "gloom" }]),
-    gloom: s("GLOOM", "냄새꼬", ["grass", "poison"], [60, 65, 70, 40, 85, 75], 21, "parabolic", 120, 138, "gloom", 96, 24, 1.08, [1, "ABSORB", 1, "ACID", 12, "MEGADRAIN", 20, "GIGADRAIN"], [{ method: "item", item: "leafStone", target: "vileplume" }]),
+    gloom: s("GLOOM", "냄새꼬", ["grass", "poison"], [60, 65, 70, 40, 85, 75], 21, "parabolic", 120, 138, "gloom", 96, 24, 1.08, [1, "ABSORB", 1, "ACID", 12, "MEGADRAIN", 20, "GIGADRAIN"], [{ method: "level", level: 34, target: "vileplume" }]),
     vileplume: s("VILEPLUME", "라플레시아", ["grass", "poison"], [75, 80, 85, 50, 110, 95], 34, "parabolic", 45, 245, "vileplume", 92, 28, 1.15, [1, "ABSORB", 1, "ACID", 1, "MEGADRAIN", 1, "GIGADRAIN"]),
 
-    vulpix: s("VULPIX", "식스테일", ["fire"], [38, 41, 40, 65, 60, 65], 5, "medium", 190, 60, "vulpix", 132, 22, 1.04, [1, "EMBER", 8, "QUICKATTACK", 23, "FLAMEBURST", 32, "FLAMETHROWER"], [{ method: "item", item: "fireStone", target: "ninetales" }]),
+    vulpix: s("VULPIX", "식스테일", ["fire"], [38, 41, 40, 65, 60, 65], 5, "medium", 190, 60, "vulpix", 132, 22, 1.04, [1, "EMBER", 8, "QUICKATTACK", 23, "FLAMEBURST", 32, "FLAMETHROWER"], [{ method: "level", level: 32, target: "ninetales" }]),
     ninetales: s("NINETALES", "나인테일", ["fire"], [73, 76, 75, 100, 100, 100], 32, "medium", 75, 177, "ninetales", 164, 27, 1.14, [1, "EMBER", 1, "QUICKATTACK", 1, "FLAMETHROWER"]),
 
     poliwag: s("POLIWAG", "발챙이", ["water"], [55, 60, 40, 75, 55, 50], 4, "parabolic", 255, 60, "poliwag", 124, 21, 1.0, [1, "WATERGUN", 1, "TACKLE", 7, "BUBBLE", 12, "MUDSHOT", 18, "BUBBLEBEAM", 30, "BODYSLAM"], [{ method: "level", level: 25, target: "poliwhirl" }]),
-    poliwhirl: s("POLIWHIRL", "슈륙챙이", ["water"], [65, 80, 65, 80, 65, 55], 25, "parabolic", 120, 135, "poliwhirl", 136, 24, 1.08, [1, "WATERGUN", 1, "MUDSHOT", 1, "BUBBLE", 18, "BUBBLEBEAM", 32, "BODYSLAM"], [{ method: "item", item: "waterStone", target: "poliwrath" }]),
+    poliwhirl: s("POLIWHIRL", "슈륙챙이", ["water"], [65, 80, 65, 80, 65, 55], 25, "parabolic", 120, 135, "poliwhirl", 136, 24, 1.08, [1, "WATERGUN", 1, "MUDSHOT", 1, "BUBBLE", 18, "BUBBLEBEAM", 32, "BODYSLAM"], [{ method: "level", level: 36, target: "poliwrath" }]),
     poliwrath: s("POLIWRATH", "강챙이", ["water", "fighting"], [90, 95, 95, 70, 70, 90], 36, "parabolic", 45, 255, "poliwrath", 142, 28, 1.15, [1, "WATERGUN", 1, "BUBBLEBEAM", 1, "BODYSLAM", 36, "LOWSWEEP"]),
 
     machop: s("MACHOP", "알통몬", ["fighting"], [70, 80, 50, 35, 35, 35], 5, "parabolic", 180, 61, "machop", 108, 23, 1.04, [1, "LOWKICK", 8, "REVENGE", 10, "KARATECHOP", 12, "LOWSWEEP"], [{ method: "level", level: 28, target: "machoke" }]),

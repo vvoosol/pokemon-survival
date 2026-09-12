@@ -63,7 +63,7 @@ window.SurvivorRPG.Entity = class Entity {
   draw(ctx, camera, assets) {
     const img = assets.image(this.spriteKey);
     if (!img) return;
-    const row = { down: 0, right: 1, left: 2, up: 3 }[this.direction] || 0;
+    const row = { down: 0, left: 1, right: 2, up: 3 }[this.direction] || 0;
     const col = Math.floor(this.animTime) % 4;
     const size = this.drawSize;
     const screenX = Math.round(this.x - camera.x - size / 2 + this.damageOffsetX);

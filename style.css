@@ -13,9 +13,7 @@
   --rarity-rare: #b385ff;
   --rarity-hero: #ffbd62;
   --rarity-legendary: #ffd84c;
-  --frame-padding: 8px;
-  --game-width: min(calc(100vw - var(--frame-padding) * 2), calc((100vh - var(--frame-padding) * 2) * 16 / 9));
-  --game-height: min(calc(100vh - var(--frame-padding) * 2), calc((100vw - var(--frame-padding) * 2) * 9 / 16));
+  --screen-scale: 1;
 }
 
 @font-face {
@@ -68,23 +66,16 @@ button {
   position: relative;
   width: 100vw;
   height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: var(--frame-padding);
   background: var(--letterbox);
 }
 
 .game-root:fullscreen {
   width: 100vw;
   height: 100vh;
-  padding: 0;
   background: var(--letterbox);
 }
 
 .game-root:fullscreen .screen-frame {
-  width: min(100vw, calc(100vh * 16 / 9));
-  height: min(100vh, calc(100vw * 9 / 16));
-  max-height: none;
   border-radius: 0;
 }
 
@@ -93,16 +84,19 @@ button {
 }
 
 .screen-frame {
-  position: relative;
-  width: var(--game-width);
-  height: var(--game-height);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1280px;
+  height: 720px;
   aspect-ratio: 16 / 9;
-  max-height: var(--game-height);
   overflow: hidden;
   border: 3px solid #0d101c;
   border-radius: 8px;
   background: #223827;
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.42);
+  transform: translate(-50%, -50%) scale(var(--screen-scale));
+  transform-origin: center center;
 }
 
 #gameCanvas {
@@ -151,10 +145,12 @@ button {
 }
 
 .move-hud {
+  position: absolute;
   right: 14px;
-  bottom: 14px;
-  width: 320px;
-  min-width: 320px;
+  bottom: 86px;
+  width: 238px;
+  color: #17213f;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9), 0 0 3px rgba(255, 255, 255, 0.75);
 }
 
 .hud-title {
@@ -213,21 +209,23 @@ button {
 
 .move-cooldown-list {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .move-cooldown-row {
   display: grid;
-  grid-template-columns: 18px minmax(92px, 1fr) minmax(84px, 1fr) 42px;
+  grid-template-columns: 96px 1fr;
   align-items: center;
-  gap: 7px;
-  min-height: 22px;
-  font-size: 0.76rem;
+  gap: 8px;
+  min-height: 17px;
+  font-size: 0.66rem;
   font-weight: 900;
 }
 
 .move-cooldown-row .meter {
-  height: 9px;
+  height: 8px;
+  border-width: 1px;
+  background: rgba(32, 37, 56, 0.62);
 }
 
 .move-cooldown-row.ready .cooldown-meter > div {
@@ -236,6 +234,11 @@ button {
 
 .move-cooldown-row.empty {
   opacity: 0.45;
+}
+
+.move-index,
+.move-time {
+  display: none;
 }
 
 .move-index {
@@ -297,8 +300,8 @@ button {
 
 .collection-panel {
   position: absolute;
-  left: 14px;
-  bottom: 14px;
+  left: 24px;
+  bottom: 154px;
   max-width: 280px;
   padding: 7px 9px;
   color: var(--blue-panel-ink);
@@ -517,80 +520,141 @@ button {
   font-weight: 700;
 }
 
+.gameboy-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
 .touch-zone {
   position: absolute;
-  left: 18px;
-  bottom: 18px;
-  width: 148px;
-  height: 148px;
-  display: none;
+  left: 54px;
+  top: 50%;
+  width: 132px;
+  height: 132px;
+  display: grid;
   place-items: center;
   touch-action: none;
+  pointer-events: auto;
+  transform: translateY(-50%);
 }
 
-.action-cluster {
+.face-buttons {
   position: absolute;
-  right: 14px;
-  bottom: 98px;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
+  right: 58px;
+  top: 50%;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  pointer-events: auto;
+  transform: translateY(-50%);
 }
 
-.action-button {
-  min-width: 104px;
-  min-height: 40px;
-  padding: 0 10px;
-  color: #17213f;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(225, 235, 255, 0.95)),
-    url("assets/ui/window-blue.png");
-  background-size: cover;
-  border: 3px solid var(--blue-panel-edge);
-  border-radius: 8px;
-  box-shadow: inset 0 0 0 2px #ffffff, 0 4px 0 rgba(0, 0, 0, 0.35);
+.gb-button {
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  color: #f0f0f0;
+  background: radial-gradient(circle at 34% 28%, #8f8f8f, #565656 68%, #343434);
+  border: 4px solid #efefef;
+  border-radius: 50%;
+  box-shadow: inset -5px -7px 0 rgba(0, 0, 0, 0.24), 0 3px 0 rgba(0, 0, 0, 0.22);
   cursor: pointer;
-  font-size: 0.84rem;
+  font-size: 0.74rem;
   font-weight: 900;
 }
 
-.action-button:disabled {
+.z-button {
+  transform: translateY(18px);
+}
+
+.x-button {
+  transform: translateY(-18px);
+}
+
+.gb-button strong {
+  color: #ffffff;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.gb-button:disabled {
   opacity: 0.46;
   cursor: default;
 }
 
-.ball-button {
+.system-buttons {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 116px);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 18px;
+  transform: translateX(-50%);
+  pointer-events: auto;
 }
 
-.ball-button img {
-  width: 24px;
+.system-button {
+  min-width: 82px;
   height: 24px;
-  image-rendering: pixelated;
+  color: #dce3f2;
+  background: linear-gradient(180deg, #59606c, #2f3440);
+  border: 2px solid #151923;
+  border-radius: 99px;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.2), 0 3px 0 rgba(0, 0, 0, 0.32);
+  cursor: pointer;
+  font-size: 0.62rem;
+  font-weight: 900;
 }
 
 .joystick {
   position: relative;
-  width: 118px;
-  height: 118px;
-  border: 3px solid rgba(255, 255, 255, 0.76);
-  border-radius: 50%;
-  background: rgba(18, 24, 25, 0.36);
+  width: 124px;
+  height: 124px;
+  border-radius: 0;
+  background: transparent;
+}
+
+.joystick::before,
+.joystick::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: linear-gradient(180deg, #777777, #4f4f4f);
+  border: 4px solid #f0f0f0;
+  border-radius: 7px;
+  box-shadow: inset -5px -5px 0 rgba(0, 0, 0, 0.12), 0 3px 0 rgba(0, 0, 0, 0.22);
+  transform: translate(-50%, -50%);
+}
+
+.joystick::before {
+  width: 38px;
+  height: 108px;
+}
+
+.joystick::after {
+  width: 108px;
+  height: 38px;
 }
 
 .joystick-knob {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 48px;
-  height: 48px;
+  z-index: 2;
+  width: 26px;
+  height: 26px;
   transform: translate(-50%, -50%);
-  border: 3px solid rgba(255, 255, 255, 0.82);
+  border: 0;
   border-radius: 50%;
-  background: rgba(77, 146, 255, 0.55);
+  background: linear-gradient(180deg, #777777, #555555);
+  box-shadow: inset -4px -4px 0 rgba(0, 0, 0, 0.12);
 }
 
 .debug-panel {
@@ -607,6 +671,27 @@ button {
   font-family: Consolas, monospace;
   font-size: 0.78rem;
   white-space: pre-line;
+}
+
+.boot-status {
+  position: absolute;
+  z-index: 20;
+  left: 50%;
+  top: 50%;
+  max-width: 620px;
+  transform: translate(-50%, -50%);
+  padding: 12px 16px;
+  color: #17213f;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(221, 232, 255, 0.97)),
+    url("assets/ui/window-blue.png");
+  background-size: cover;
+  border: 3px solid var(--blue-panel-edge);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 2px #ffffff, 0 5px 0 rgba(0, 0, 0, 0.34);
+  font-size: 0.88rem;
+  font-weight: 900;
+  text-align: center;
 }
 
 .game-over {
@@ -790,95 +875,7 @@ button {
   min-width: 96px;
 }
 
-@media (hover: none), (pointer: coarse) {
-  .touch-zone {
-    display: grid;
-  }
-
-  .player-hud {
-    min-width: 210px;
-  }
-
-  .move-hud {
-    min-width: 190px;
-  }
-
-  .action-cluster {
-    display: grid;
-  }
-}
-
-@media (orientation: portrait) {
-  .orientation-notice {
-    display: block;
-  }
-}
-
 @media (max-width: 760px) {
-  .hud-panel {
-    min-width: 176px;
-    padding: 8px 9px;
-  }
-
-  .player-hud {
-    top: 8px;
-    left: 8px;
-  }
-
-  .fullscreen-button {
-    top: 8px;
-    right: 8px;
-    min-height: 36px;
-    padding: 0 10px;
-    font-size: 0.86rem;
-  }
-
-  .debug-panel {
-    top: 56px;
-    right: 8px;
-  }
-
-  .move-hud {
-    right: 8px;
-    bottom: 8px;
-    width: 276px;
-    min-width: 276px;
-  }
-
-  .move-cooldown-row {
-    grid-template-columns: 16px minmax(76px, 1fr) minmax(64px, 1fr) 36px;
-    gap: 5px;
-    font-size: 0.68rem;
-  }
-
-  .collection-panel {
-    left: 8px;
-    bottom: 142px;
-    max-width: 230px;
-  }
-
-  .message-box {
-    bottom: 76px;
-    width: clamp(230px, 52%, 420px);
-    max-width: calc(100% - 18px);
-    min-height: 42px;
-    max-height: 62px;
-    padding: 10px 12px;
-    font-size: 0.82rem;
-  }
-
-  .action-cluster {
-    right: 8px;
-    bottom: 64px;
-  }
-
-  .action-button {
-    min-width: 98px;
-    min-height: 40px;
-    padding: 0 9px;
-    font-size: 0.82rem;
-  }
-
   .menu-window {
     width: 96%;
     padding: 12px;
@@ -916,10 +913,11 @@ button {
   }
 
   .touch-zone {
-    left: 8px;
-    bottom: 8px;
-    width: 128px;
-    height: 128px;
+    left: 42px;
+    top: 50%;
+    bottom: auto;
+    width: 132px;
+    height: 132px;
   }
 
   .level-choice-overlay {

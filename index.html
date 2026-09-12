@@ -3,16 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Scientist RPG - Auto Battle Stage 6</title>
+  <title>Scientist RPG - Auto Battle Stage 8</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main id="gameRoot" class="game-root">
-    <div id="orientationNotice" class="orientation-notice">
-      가로 화면으로 플레이하면 더 편하게 즐길 수 있습니다.
-    </div>
-
-    <section class="screen-frame" aria-label="Pokemon survivor RPG prototype">
+    <section id="screenFrame" class="screen-frame" aria-label="Pokemon survivor RPG prototype">
       <canvas id="gameCanvas" width="1280" height="720" aria-label="Game field"></canvas>
 
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="전체화면 전환">
@@ -38,11 +34,7 @@
         </div>
       </div>
 
-      <div class="hud-panel move-hud">
-        <div class="hud-title">
-          <strong id="moveName">기술</strong>
-          <span id="moveReady">READY</span>
-        </div>
+      <div class="move-hud">
         <div id="moveCooldownList" class="move-cooldown-list" aria-label="Move cooldowns"></div>
       </div>
 
@@ -67,6 +59,7 @@
       </div>
 
       <div id="debugPanel" class="debug-panel" hidden></div>
+      <div id="bootStatus" class="boot-status">게임 부팅 중...</div>
 
       <div id="gameOver" class="game-over" hidden>
         <div class="game-over-box">
@@ -75,34 +68,54 @@
         </div>
       </div>
 
-      <div class="touch-zone" aria-label="Virtual joystick">
-        <div id="joystick" class="joystick">
-          <div id="joystickKnob" class="joystick-knob"></div>
+      <div class="gameboy-controls" aria-label="Game Boy controls">
+        <div class="touch-zone" aria-label="Virtual d-pad">
+          <div id="joystick" class="joystick">
+            <div id="joystickKnob" class="joystick-knob"></div>
+          </div>
         </div>
-      </div>
 
-      <div class="action-cluster" aria-label="Action buttons">
-        <button id="switchActionBtn" class="action-button" type="button">
-          <span id="switchActionLabel">Z / 출전</span>
-        </button>
-        <button id="partyActionBtn" class="action-button" type="button">
-          <span>X / 변경</span>
-        </button>
-        <button id="menuActionBtn" class="action-button" type="button">
-          <span>MENU</span>
-        </button>
-        <button id="ballActionBtn" class="action-button ball-button" type="button">
-          <img src="assets/items/pokeball.png" alt="" aria-hidden="true">
-          <span>BALL</span>
-        </button>
+        <div class="face-buttons" aria-label="Action buttons">
+          <button id="switchActionBtn" class="gb-button z-button" type="button">
+            <strong>Z</strong>
+            <span id="switchActionLabel">YES</span>
+          </button>
+          <button id="ballActionBtn" class="gb-button x-button" type="button">
+            <strong>X</strong>
+            <span id="xActionLabel">NO</span>
+          </button>
+        </div>
+
+        <div class="system-buttons" aria-label="Menu buttons">
+          <button id="partyActionBtn" class="system-button" type="button">SELECT</button>
+          <button id="menuActionBtn" class="system-button" type="button">START</button>
+        </div>
       </div>
     </section>
   </main>
 
+  <script>
+    const setBootStatus = (message) => {
+      const bootStatus = document.getElementById("bootStatus");
+      if (bootStatus) bootStatus.textContent = message;
+    };
+    window.addEventListener("error", (event) => {
+      window.__bootError = `${event.message} @ ${event.filename}:${event.lineno}`;
+      document.body.dataset.bootError = window.__bootError;
+      setBootStatus(`부팅 오류: ${window.__bootError}`);
+    });
+    window.addEventListener("unhandledrejection", (event) => {
+      window.__bootError = String(event.reason && event.reason.message ? event.reason.message : event.reason);
+      document.body.dataset.bootError = window.__bootError;
+      setBootStatus(`부팅 오류: ${window.__bootError}`);
+    });
+  </script>
   <script src="js/data/moveData.js"></script>
   <script src="js/data/pokemonData.js"></script>
   <script src="js/data/anilAdapter.js"></script>
+  <script src="js/data/itemData.js"></script>
   <script src="js/data/ballData.js"></script>
+  <script src="js/data/moveVisualAdapter.js"></script>
   <script src="js/data/upgradeData.js"></script>
   <script src="js/data/mapData.js"></script>
   <script src="js/assets.js"></script>

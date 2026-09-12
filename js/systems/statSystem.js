@@ -24,8 +24,10 @@ window.SurvivorRPG.StatSystem = class StatSystem {
     const attackStat = move.category === "physical" ? attacker.attack : attacker.specialAttack;
     const defenseStat = move.category === "physical" ? defender.defense : defender.specialDefense;
     const base = (((2 * attacker.level / 5 + 2) * move.power * attackStat / Math.max(1, defenseStat)) / 50) + 2;
-    const stab = attacker.types?.includes(move.type) ? 1.5 : 1;
-    const type = window.SurvivorRPG.DataAdapter?.typeMultiplier(move.type, defender.types) ?? 1;
+    const attackerTypes = this.activeTypes(attacker);
+    const defenderTypes = this.activeTypes(defender);
+    const stab = attackerTypes.includes(move.type) ? 1.5 : 1;
+    const type = window.SurvivorRPG.DataAdapter?.typeMultiplier(move.type, defenderTypes) ?? 1;
     const beforeAbility = window.SurvivorRPG.AbilityRuntime?.beforeDamage(defender, move) || { immune: false, label: "-" };
     const ability = window.SurvivorRPG.AbilityRuntime?.damageModifier(attacker, defender, move, { base, stab, type }) || { multiplier: 1, label: "-" };
     const variance = 0.9 + Math.random() * 0.15;
@@ -41,6 +43,14 @@ window.SurvivorRPG.StatSystem = class StatSystem {
       abilityLabel: beforeAbility.immune ? beforeAbility.label : ability.label,
       finalDamage: type === 0 || beforeAbility.immune ? 0 : Math.max(1, Math.floor(raw))
     };
+  }
+
+  activeTypes(entity) {
+    return window.SurvivorRPG.DataAdapter?.getActiveTypes(entity) || [...(entity?.types || [])];
+  }
+
+  movementSpeedFromStat(speed) {
+    return Math.max(120, Math.min(255, 150 + speed * 2.2));
   }
 
   calculateNativeStats(species, level) {
@@ -113,6 +123,13 @@ window.SurvivorRPG.StatSystem = class StatSystem {
     entity.specialAttack = Math.round(native.specialAttack * (1 + bonus.specialAttackPct));
     entity.specialDefense = Math.round(native.specialDefense * (1 + bonus.specialDefensePct));
     entity.speed = Math.round(native.speed * (1 + bonus.speedPct));
+    const abilityId = entity.abilityId || entity.ability;
+    if (["CHLOROPHYLL", "SWIFTSWIM", "STEADFAST"].includes(abilityId)) entity.speed = Math.round(entity.speed * 1.1);
+    if (abilityId === "SANDVEIL") entity.defense = Math.round(entity.defense * 1.08);
+    if (abilityId === "MAGICGUARD") entity.specialDefense = Math.round(entity.specialDefense * 1.08);
+    if (entity instanceof window.SurvivorRPG.PlayerPokemon) {
+      entity.movementSpeed = this.movementSpeedFromStat(entity.speed);
+    }
     entity.hp = Math.min(entity.hp, entity.maxHp);
   }
 };

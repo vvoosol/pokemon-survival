@@ -6,6 +6,7 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     fighting: "Fighting", poison: "Poison", ground: "Ground", flying: "Flying", psychic: "Psychic",
     bug: "Bug", rock: "Rock", ghost: "Ghost", dragon: "Dragon", dark: "Dark", steel: "Steel", fairy: "Fairy"
   };
+  const allTypes = Object.keys(typeNames);
 
   const defenseProfile = {
     normal: { weaknesses: ["fighting"], immunities: ["ghost"] },
@@ -41,21 +42,22 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     BIGPECKS: { id: "BIGPECKS", name: "부풀린가슴", status: "PENDING", description: "방어가 떨어지지 않습니다." },
     SHIELDDUST: { id: "SHIELDDUST", name: "인분", status: "PENDING", description: "기술의 추가 효과를 받지 않습니다." },
     COMPOUNDEYES: { id: "COMPOUNDEYES", name: "복안", status: "PENDING", description: "명중률이 올라갑니다." },
-    CHLOROPHYLL: { id: "CHLOROPHYLL", name: "엽록소", status: "PENDING", description: "햇살이 강할 때 스피드가 올라갑니다." },
+    CHLOROPHYLL: { id: "CHLOROPHYLL", name: "엽록소", status: "ADAPTED", description: "햇살이 강할 때 스피드가 올라갑니다." },
     STENCH: { id: "STENCH", name: "악취", status: "PENDING", description: "상대를 풀죽게 만들 수 있습니다." },
     EFFECTSPORE: { id: "EFFECTSPORE", name: "포자", status: "PENDING", description: "접촉한 상대에게 상태 이상을 줄 수 있습니다." },
     FLASHFIRE: { id: "FLASHFIRE", name: "타오르는불꽃", status: "SUPPORTED", description: "불꽃 타입 공격을 무효화하고 이후 불꽃 기술 위력이 1.5배가 됩니다." },
     DROUGHT: { id: "DROUGHT", name: "가뭄", status: "PENDING", description: "등장 시 햇살을 강하게 만듭니다." },
     WATERABSORB: { id: "WATERABSORB", name: "저수", status: "SUPPORTED", description: "물 타입 공격을 무효화하고 최대 HP의 1/4만큼 회복합니다." },
-    SWIFTSWIM: { id: "SWIFTSWIM", name: "쓱쓱", status: "PENDING", description: "비가 올 때 스피드가 올라갑니다." },
+    SWIFTSWIM: { id: "SWIFTSWIM", name: "쓱쓱", status: "ADAPTED", description: "비가 올 때 스피드가 올라갑니다." },
     NOGUARD: { id: "NOGUARD", name: "노가드", status: "PENDING", description: "서로의 공격이 반드시 명중합니다." },
-    STEADFAST: { id: "STEADFAST", name: "불굴의마음", status: "PENDING", description: "풀죽을 때 스피드가 올라갑니다." },
+    STEADFAST: { id: "STEADFAST", name: "불굴의마음", status: "ADAPTED", description: "풀죽을 때 스피드가 올라갑니다." },
     ROCKHEAD: { id: "ROCKHEAD", name: "돌머리", status: "PENDING", description: "반동 피해를 받지 않습니다." },
     STURDY: { id: "STURDY", name: "옹골참", status: "SUPPORTED", description: "HP가 가득 찬 상태라면 한 번에 쓰러지지 않습니다." },
-    SANDVEIL: { id: "SANDVEIL", name: "모래숨기", status: "PENDING", description: "모래바람에서 회피율이 올라갑니다." },
+    SANDVEIL: { id: "SANDVEIL", name: "모래숨기", status: "ADAPTED", description: "모래바람에서 회피율이 올라갑니다." },
     SYNCHRONIZE: { id: "SYNCHRONIZE", name: "싱크로", status: "PENDING", description: "받은 상태 이상을 상대에게도 옮길 수 있습니다." },
     INNERFOCUS: { id: "INNERFOCUS", name: "정신력", status: "PENDING", description: "풀죽지 않습니다." },
-    MAGICGUARD: { id: "MAGICGUARD", name: "매직가드", status: "PENDING", description: "공격 외의 피해를 받지 않습니다." }
+    MAGICGUARD: { id: "MAGICGUARD", name: "매직가드", status: "ADAPTED", description: "공격 외의 피해를 받지 않습니다." },
+    LIGHTNINGROD: { id: "LIGHTNINGROD", name: "피뢰침", status: "SUPPORTED", description: "전기 공격을 무효화하고 특수공격이 올라갑니다." }
   };
 
   const speciesAbilities = {
@@ -100,6 +102,20 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     poliwag: ["waterGun", "bubble", "bubbleBeam", "bodySlam"]
   };
 
+  const tmFallbackByFamily = {
+    ivysaur: "bulbasaur",
+    venusaur: "bulbasaur",
+    raichu: "pikachu",
+    graveler: "geodude",
+    golem: "geodude",
+    kadabra: "abra",
+    alakazam: "abra",
+    machoke: "machop",
+    machamp: "machop",
+    poliwhirl: "poliwag",
+    poliwrath: "poliwag"
+  };
+
   Object.entries(speciesAbilities).forEach(([speciesId, meta]) => {
     const species = window.SurvivorRPG.PokemonData[speciesId];
     if (!species) return;
@@ -135,8 +151,18 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     getAbilityData: (abilityId) => abilities[abilityId] || { id: abilityId, name: abilityId || "-", status: "PENDING", description: "아직 실시간 전투 효과가 연결되지 않았습니다." },
     getEvolutionData: (speciesId) => window.SurvivorRPG.PokemonData[speciesId]?.evolutions || [],
     getLearnset: (speciesId) => window.SurvivorRPG.PokemonData[speciesId]?.learnset || [],
-    getTMLearnset: (speciesId) => window.SurvivorRPG.PokemonData[speciesId]?.tmLearnset || [],
+    getTMLearnset: (speciesId) => {
+      const species = window.SurvivorRPG.PokemonData[speciesId];
+      if (species?.tmLearnset?.length) return species.tmLearnset;
+      const fallback = tmFallbackByFamily[speciesId];
+      return fallback ? (window.SurvivorRPG.PokemonData[fallback]?.tmLearnset || []) : [];
+    },
+    getCompatibleTMMoves(speciesId) {
+      return this.getTMLearnset(speciesId);
+    },
     getHiddenAbilities: (speciesId) => window.SurvivorRPG.PokemonData[speciesId]?.hiddenAbilities || [],
+    getAllTypes: () => [...allTypes],
+    getActiveTypes: (entity) => entity?.teraType ? [entity.teraType] : [...(entity?.types || [])],
     getPokedexEntry: (speciesId) => {
       const species = window.SurvivorRPG.PokemonData[speciesId];
       return species ? { number: species.dexNo || 0, name: species.name, text: species.pokedex || "" } : null;
@@ -180,6 +206,10 @@ window.SurvivorRPG = window.SurvivorRPG || {};
       if (abilityId === "FLASHFIRE" && move.type === "fire") {
         defender.flashFireCharged = true;
         return { immune: true, label: "타오르는불꽃" };
+      }
+      if (abilityId === "LIGHTNINGROD" && move.type === "electric") {
+        defender.specialAttack = Math.round(defender.specialAttack * 1.08);
+        return { immune: true, label: "피뢰침" };
       }
       return { immune: false, label: "-" };
     }

@@ -1,27 +1,30 @@
-# Scientist RPG / Pokemon Auto Battle - Stage 6
+# Scientist RPG / Pokemon Auto Battle - Stage 8
 
-Pokemon Anil V4.13 원본 자료를 Source of Truth로 삼고, HTML Canvas 자동전투 런타임에서 해석하는 구조입니다.
+Pokemon Anil V4.13 source data and assets are used as the local source-of-truth layer for this HTML Canvas auto-battle RPG.
 
-## 실행
+## Run
 
 ```text
 C:\Users\User\Documents\New project\html-monster-resonance-game
 http://127.0.0.1:8787/
 ```
 
-## 원본 데이터 위치
+## Stage 7 Features
 
-- Species / Base Stats / Learnset / Evolution: `Pokemon Anil V4.13/PBS/pokemon.txt`
-- Move Type / Category / Power / Accuracy / Flags: `Pokemon Anil V4.13/PBS/moves.txt`
-- Ability 이름 / 설명: `Pokemon Anil V4.13/PBS/abilities.txt`
-- 18 Type 방어 상성: `Pokemon Anil V4.13/PBS/types.txt`
-- Menu UI 참고: `Pokemon Anil V4.13/Graphics/Pictures/DP Pause Menu`
-- Menu Icon: `Pokemon Anil V4.13/Graphics/Icons/menu*.png`
-- Sprite / Icon: `Pokemon Anil V4.13/Graphics/Characters/Followers/*.png`
+- Level-up choices now roll all four rarities independently per card: common 70%, rare 20%, hero 8%, legendary 2%.
+- Common cards grant stat growth.
+- Rare cards upgrade one of the Pokemon's current four moves.
+- Hero cards can replace the current ability with a supported/adapted Hidden Ability.
+- Hero cards can grant a permanent Tera Type. Base types are preserved, while active battle typing becomes the single Tera Type.
+- Legendary cards can teach one compatible damaging TM move through the existing move learn/replace UI.
+- Save data is now version 2 and persists ability, base types, Tera Type, and Tera state.
+- Summary and debug panels show Base Type, Tera Type, Active Type, Hidden Ability, and compatible TM candidates.
+- The battle HUD shows four independent move cooldown rows in the bottom-right.
+- UI font files are loaded from the user-provided Korean patch font archive.
 
-## Adapter 구조
+## Adapter API
 
-`js/data/anilAdapter.js`가 원본 스냅샷과 런타임 API를 제공합니다.
+`js/data/anilAdapter.js` exposes the current source-compatible interface:
 
 ```text
 getSpeciesData(speciesId)
@@ -30,104 +33,76 @@ getAbilityData(abilityId)
 getEvolutionData(speciesId)
 getLearnset(speciesId)
 getTMLearnset(speciesId)
+getCompatibleTMMoves(speciesId)
 getHiddenAbilities(speciesId)
 getPokedexEntry(speciesId)
 getPokemonSprite(speciesId)
 getPokemonIcon(speciesId)
+getTypeData(typeId)
+getAllTypes()
+getActiveTypes(entity)
 typeMultiplier(moveType, defenderTypes)
 validate()
 ```
 
-`js/data/moveData.js`는 원본 Move 정보에 우리 게임용 Runtime Override를 합칩니다.
+## Controls
 
-```text
-baseCooldown
-behavior
-range
-width
-projectileSpeed
-piercing
-```
+- Move: `WASD` or arrow keys
+- Deploy / recall: `Z`
+- Party select / quick switch: `X`
+- Poke Ball: `C` in Trainer Mode
+- Menu: `Esc`, `Enter`, or mobile `MENU`
+- Fullscreen: top-right button
+- Debug: `F2`
+- Debug EXP: `F3`
+- Force next rarity: `F4` rare, `F6` common, `F7` hero, `F8` legendary
+- Debug weaken capture target: `F5`
 
-## 6단계 구현
+## Save
 
-- 18타입 방어 상성 적용
-- 이중 타입 배율 곱 적용
-- 0배 무효 적용
-- STAB 1.5배 적용
-- Physical / Special Damage 분리 유지
-- Damage Modifier Pipeline 추가
-- 전투 Floating Text: 굉장함 / 별로 / 효과 없음
-- Ability Runtime Handler 추가
-- 현재 지원: 심록, 맹화, 급류, 저수, 타오르는불꽃, 옹골참 일부, 의욕
-- 미지원 Ability는 PENDING으로 안전 fallback
-- Pokemon Instance에 `abilityId` 저장
-- Hidden Ability / TM Learnset 조회 API 준비
-- Data Validation 경고 구조 추가
-- Trainer Mode 메뉴 추가: `Esc`, `Enter`, 모바일 `MENU`
-- Main Menu: Pokédex / Pokémon / Report-Save / 닫기
-- Pokémon Party Menu
-- Pokémon Summary
-- Party 순서 변경
-- Pokédex Seen / Caught / Count
-- Report / Save / Load
-- Save Data Version: `1`
-
-## 저장 구조
-
-브라우저 `localStorage` 키:
+Browser `localStorage` key:
 
 ```text
 scientistRpgSave
 ```
 
-저장 항목:
+Save version: `3`
 
-```text
-version
-savedAt
-trainer position
-balls
-pokedex
-ownedPokemon
-partyIds
-reserveIds
-selectedId
-```
+## Verification
 
-## 조작
+- All JavaScript files pass `node --check`.
+- Rarity distribution test is close to 70/20/8/2.
+- Hero choices can produce Hidden Ability or Tera Type choices.
+- Legendary choices can produce compatible damaging TM moves.
+- Tera Type changes active battle type while preserving base type.
 
-- 이동: `WASD` 또는 방향키
-- 출전/회수: `Z`
-- 파티 변경/빠른 교체: `X`
-- 몬스터볼: Trainer Mode에서 `C`
-- 메뉴: Trainer Mode에서 `Esc` 또는 `Enter`
-- 모바일 메뉴: `MENU`
-- 전체화면: 오른쪽 위 버튼
-- 디버그: `F2`
-- 디버그 EXP: `F2` 후 `F3`
+## Stage 8 Features
 
-## 검증
+- The whole game surface is locked to a 1280x720 coordinate layout and only scales up/down to preserve the same ratio.
+- The move cooldown HUD is compact and background-free, showing only move names and cooldown gauges.
+- Game Boy-style controls use a left d-pad, right Z/X buttons, and SELECT/START menu buttons.
+- `Z` is the primary yes/interact/deploy button. `X` is no/back, Poke Ball in Trainer Mode, and quick switch in Pokemon Mode.
+- Deploy and quick switch now happen instantly at the same position with a short Poke Ball flash effect.
+- Switching resets every move cooldown as a penalty.
+- Player Pokemon movement speed is calculated from the Pokemon Speed stat.
+- Item-based evolutions are converted to level evolutions for the current no-item evolution phase.
+- Catching wild Pokemon grants money, starting at 20 won.
+- Poke Mart menu sells Poke Balls, Potions, and Exp Share. Exp Share costs 500 won and grants 70% EXP to non-participants.
+- Field overhead labels show level, type markers, and name for all Pokemon. The active player Pokemon has a red inverted triangle marker.
 
-- 전체 JavaScript `node --check` 통과
-- 로컬 서버 `200 OK`
-- 브라우저 Stage 6 로딩 확인
-- Main Menu / Pokémon Menu / Summary / Report Save 화면 확인
-- Save 버튼 동작 확인
-- Type 테스트:
-  - Electric vs Water = x2
-  - Electric vs Ground = x0
-  - Grass vs Water/Ground = x4
-  - Normal vs Ghost = x0
-- STAB 테스트:
-  - Pikachu Electric Move = x1.5
-  - Pikachu Normal Move = x1
-- Ability 테스트:
-  - Overgrow normal HP = x1
-  - Overgrow low HP Grass Move = x1.5
+## Stage 7.5 Sandbox Loop
 
-## 알려진 제한
-
-- 전체 Anil PBS를 브라우저에서 즉시 파싱하지는 않고, 현재 지원 범위는 원본 PBS에서 추출한 스냅샷 + Adapter API로 연결했습니다.
-- 모든 Ability 효과를 구현하지 않았습니다. 현재 실시간 전투에 자연스럽게 맞는 일부만 SUPPORTED/ADAPTED입니다.
-- 30분 장시간 플레이 테스트는 수행하지 못했습니다.
+- Added a data-driven hub map with three NPCs: hunting guide, healer, and shop.
+- Added three selectable hunting areas:
+  - `hunting_01`: Lv.1~10
+  - `hunting_02`: Lv.11~20
+  - `hunting_03`: Lv.21~30
+- Each hunting area has four separate spawn zones with different spawn tables.
+- Spawn zones support `NORMAL`, `SWARM`, and `ELITE` styles.
+- Wild Pokemon now spawn with zone-specific level ranges and scaled stats.
+- Hunting areas include a return NPC for going back to the hub.
+- Party healing is available through the hub healer NPC.
+- Mart uses shared `ItemData`.
+- Bag menu was added and can use Potion on party Pokemon in Trainer Mode.
+- Save data stores current map, current hunting area, money, and inventory.
+- Added `MoveVisualAdapter` as the separation layer for original Anil move animations and generic type fallback effects.

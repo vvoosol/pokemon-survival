@@ -6,6 +6,9 @@ window.SurvivorRPG.InputManager = class InputManager {
     this.debugPressed = false;
     this.testExpPressed = false;
     this.forceRarePressed = false;
+    this.forceCommonPressed = false;
+    this.forceHeroPressed = false;
+    this.forceLegendaryPressed = false;
     this.choicePressed = null;
     this.switchPressed = false;
     this.ballPressed = false;
@@ -30,11 +33,11 @@ window.SurvivorRPG.InputManager = class InputManager {
         event.preventDefault();
         this.switchPressed = true;
       }
-      if (event.key === "c" || event.key === "C") {
+      if (event.key === "x" || event.key === "X" || event.key === "c" || event.key === "C") {
         event.preventDefault();
         this.ballPressed = true;
       }
-      if (event.key === "x" || event.key === "X") {
+      if (event.key === "Tab" || event.key === "v" || event.key === "V") {
         event.preventDefault();
         this.partyPressed = true;
       }
@@ -57,6 +60,18 @@ window.SurvivorRPG.InputManager = class InputManager {
       if (event.key === "F5") {
         event.preventDefault();
         this.setTargetWeakPressed = true;
+      }
+      if (event.key === "F6") {
+        event.preventDefault();
+        this.forceCommonPressed = true;
+      }
+      if (event.key === "F7") {
+        event.preventDefault();
+        this.forceHeroPressed = true;
+      }
+      if (event.key === "F8") {
+        event.preventDefault();
+        this.forceLegendaryPressed = true;
       }
       if (["1", "2", "3", "4", "5"].includes(event.key)) {
         this.choicePressed = Number(event.key) - 1;
@@ -152,6 +167,26 @@ window.SurvivorRPG.InputManager = class InputManager {
     if (!this.forceRarePressed) return false;
     this.forceRarePressed = false;
     return true;
+  }
+
+  consumeForceRarity() {
+    if (this.forceRarePressed) {
+      this.forceRarePressed = false;
+      return "rare";
+    }
+    if (this.forceCommonPressed) {
+      this.forceCommonPressed = false;
+      return "common";
+    }
+    if (this.forceHeroPressed) {
+      this.forceHeroPressed = false;
+      return "hero";
+    }
+    if (this.forceLegendaryPressed) {
+      this.forceLegendaryPressed = false;
+      return "legendary";
+    }
+    return null;
   }
 
   consumeChoiceIndex() {

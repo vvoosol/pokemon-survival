@@ -48,9 +48,20 @@ This HTML game uses only resources extracted from the user-provided `POKEMON ANI
 | `assets/audio/hit.ogg` | `Pokemon Anil V4.13/Audio/SE/Battle damage normal.ogg` |
 | `assets/audio/exp.ogg` | `Pokemon Anil V4.13/Audio/SE/Pkmn exp gain.ogg` |
 | `assets/audio/level-up.ogg` | `Pokemon Anil V4.13/Audio/SE/Pkmn level up.ogg` |
+| `assets/fonts/power_clear.otf` | `퓨전_한글패치.zip/Fonts_korean_v2/power_clear.otf` |
+| `assets/fonts/power_clear_bold.otf` | `퓨전_한글패치.zip/Fonts_korean_v2/power_clear_bold.otf` |
+| `assets/fonts/power_green.otf` | `퓨전_한글패치.zip/Fonts_korean_v2/power_green.otf` |
+| `assets/fonts/power_green_narrow.otf` | `퓨전_한글패치.zip/Fonts_korean_v2/power_green_narrow.otf` |
+| `assets/fonts/power_green_small.otf` | `퓨전_한글패치.zip/Fonts_korean_v2/power_green_small.otf` |
+| `assets/fonts/power_red_and_blue.otf` | `퓨전_한글패치.zip/Fonts_korean_v2/power_red_and_blue.otf` |
+| `assets/fonts/power_red_and_blue_intl.otf` | `퓨전_한글패치.zip/Fonts_korean_v2/power_red_and_blue_intl.otf` |
 
 ## Rule
 
 Do not add external image assets. Any new visual asset must come from:
 
 `C:\Users\User\Downloads\POKEMON ANIL V4.13.zip`
+
+Font assets currently come only from:
+
+`C:\Users\User\Downloads\퓨전_한글패치.zip`

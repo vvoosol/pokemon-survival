@@ -312,7 +312,7 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
 
     ctx.save();
     ctx.textAlign = "center";
-    ctx.font = "bold 20px Segoe UI, Arial";
+    ctx.font = "bold 20px FusionPokemon, Segoe UI, Arial";
     this.damageNumbers.forEach((num) => {
       ctx.globalAlpha = Math.min(1, num.life * 1.4);
       ctx.fillStyle = num.color;

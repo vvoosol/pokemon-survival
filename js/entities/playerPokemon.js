@@ -37,7 +37,9 @@ window.SurvivorRPG.PlayerPokemon = class PlayerPokemon extends window.SurvivorRP
     this.participationData = data.participationData || {};
     this.abilityId = data.abilityId || data.ability || data.abilities?.[0] || null;
     this.ability = this.abilityId;
+    this.baseTypes = data.baseTypes ? [...data.baseTypes] : [...(data.types || this.types || [])];
     this.teraType = data.teraType || null;
+    this.hasTerastallized = data.hasTerastallized || !!this.teraType;
     this.evolutionData = data.evolutionData || null;
     this.spriteKey = data.id;
   }

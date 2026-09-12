@@ -1,0 +1,28 @@
+window.SurvivorRPG = window.SurvivorRPG || {};
+
+window.SurvivorRPG.ItemData = {
+  pokeBall: {
+    id: "pokeBall",
+    name: "몬스터볼",
+    category: "ball",
+    price: 50,
+    icon: "assets/items/pokeball.png",
+    description: "야생 포켓몬을 포획할 때 사용합니다.",
+    catchModifier: 1.0
+  },
+  potion: {
+    id: "potion",
+    name: "상처약",
+    category: "medicine",
+    price: 30,
+    healAmount: 20,
+    description: "포켓몬 1마리의 HP를 20 회복합니다."
+  },
+  expShare: {
+    id: "expShare",
+    name: "학습장치",
+    category: "key",
+    price: 500,
+    description: "전투에 참여하지 않은 파티 포켓몬도 경험치 70%를 얻습니다."
+  }
+};
