@@ -38,16 +38,45 @@ This HTML game uses only resources extracted from the user-provided `POKEMON ANI
 | `assets/pokemon/alakazam.png` | `Pokemon Anil V4.13/Graphics/Characters/Followers/ALAKAZAM.png` |
 | `assets/trainer/trainer.png` | `Pokemon Anil V4.13/Graphics/Characters/POKEMONTRAINER_RojoNeutro_walk.png` |
 | `assets/items/pokeball.png` | `Pokemon Anil V4.13/Graphics/Items/POKEBALL.png` |
+| `assets/items/potion.png` | `Pokemon Anil V4.13/Graphics/Items/POTION.png` |
+| `assets/items/exp-share.png` | `Pokemon Anil V4.13/Graphics/Items/EXPSHARE.png` |
+| `assets/items/pokedex.png` | `Pokemon Anil V4.13/Graphics/Items/Key items/POKEDEX_key.png` |
+| `assets/items/pokemon-box-link.png` | `Pokemon Anil V4.13/Graphics/Items/POKEMONBOXLINK.png` |
+| `assets/items/town-map.png` | `Pokemon Anil V4.13/Graphics/Items/TOWNMAP.png` |
+| `assets/items/back.png` | `Pokemon Anil V4.13/Graphics/Items/back.png` |
 | `assets/tilesets/exterior1.png` | `Pokemon Anil V4.13/Graphics/Tilesets/Exterior1.png` |
 | `assets/ui/window-blue.png` | `Pokemon Anil V4.13/Graphics/Windowskins/001-Blue01.png` |
-| `assets/ui/menuPokedex.png` | `Pokemon Anil V4.13/Graphics/Icons/menuPokedex.png` |
-| `assets/ui/menuPokemon.png` | `Pokemon Anil V4.13/Graphics/Icons/menuPokemon.png` |
-| `assets/ui/menuSave.png` | `Pokemon Anil V4.13/Graphics/Icons/menuSave.png` |
-| `assets/ui/menuQuit.png` | `Pokemon Anil V4.13/Graphics/Icons/menuQuit.png` |
+| `assets/ui/anil-databox-normal.png` | `Pokemon Anil V4.13/Graphics/UI/Battle/databox_normal.png` |
+| `assets/ui/anil-databox-foe.png` | `Pokemon Anil V4.13/Graphics/UI/Battle/databox_normal_foe.png` |
+| `assets/ui/anil-overlay-hp.png` | `Pokemon Anil V4.13/Graphics/UI/Battle/overlay_hp.png` |
+| `assets/ui/anil-overlay-exp.png` | `Pokemon Anil V4.13/Graphics/UI/Battle/overlay_exp.png` |
+| `assets/ui/anil-overlay-hp-back.png` | `Pokemon Anil V4.13/Graphics/UI/Party/overlay_hp_back.png` |
+| `assets/ui/anil-bag.png` | `Pokemon Anil V4.13/Graphics/UI/Bag/bag_1.png` |
+| `assets/ui/anil-save-panels.png` | `Pokemon Anil V4.13/Graphics/UI/Save/panels.png` |
+| `assets/ui/party/*` | `Pokemon Anil V4.13/Graphics/UI/Party/*` |
+| `assets/ui/summary/info.png` | `Pokemon Anil V4.13/Graphics/UI/Summary/bg_info.png` |
+| `assets/ui/summary/stats.png` | `Pokemon Anil V4.13/Graphics/UI/Summary/bg_skills.png` |
+| `assets/ui/summary/moves.png` | `Pokemon Anil V4.13/Graphics/UI/Summary/bg_moves.png` |
+| `assets/ui/bag/bg.png`, `cursor.png` | `Pokemon Anil V4.13/Graphics/UI/Bag/bg_1.png`, `cursor.png` |
+| `assets/ui/pokedex/bg.png`, `cursor.png` | `Pokemon Anil V4.13/Graphics/UI/Pokedex/bg_list.png`, `cursor_list.png` |
+| `assets/ui/mart/bg.png`, `cursor.png` | `Pokemon Anil V4.13/Graphics/UI/Mart/bg.png`, `cursor.png` |
+| `assets/ui/types-mini.png` | `Pokemon Anil V4.13/Graphics/UI/types_mini.png` (24x24 cells, type order 0-18) |
+| `assets/ui/selection-arrow.png` | `Pokemon Anil V4.13/Graphics/UI/sel_arrow.png` |
+| `assets/ui/anil-battle-ball-empty.png` | `Pokemon Anil V4.13/Graphics/UI/Battle/icon_ball_empty.png` |
+| `assets/ui/window-fill.png` | `Pokemon Anil V4.13/Graphics/Windowskins/001-Blue01.png` crop `(0,0,128,128)` |
+| `assets/ui/window-frame.png` | `Pokemon Anil V4.13/Graphics/Windowskins/001-Blue01.png` crop `(128,0,64,64)` |
+| `assets/pokemon-icons/{species}.png` | `Pokemon Anil V4.13/Graphics/Pokemon/Icons/{SPECIES}.png` (first 64x64 frame shown) |
+| `assets/pokemon-front/{species}.png` | `Pokemon Anil V4.13/Graphics/Pokemon/Front/{SPECIES}.png` (first square frame shown; frame width equals sheet height) |
 | `assets/audio/tackle.wav` | `Pokemon Anil V4.13/Audio/SE/PRSFX- Tackle.wav` |
 | `assets/audio/hit.ogg` | `Pokemon Anil V4.13/Audio/SE/Battle damage normal.ogg` |
 | `assets/audio/exp.ogg` | `Pokemon Anil V4.13/Audio/SE/Pkmn exp gain.ogg` |
 | `assets/audio/level-up.ogg` | `Pokemon Anil V4.13/Audio/SE/Pkmn level up.ogg` |
+| `assets/audio/ui-cursor.ogg` | `Pokemon Anil V4.13/Audio/SE/GUI sel cursor.ogg` |
+| `assets/audio/ui-confirm.ogg` | `Pokemon Anil V4.13/Audio/SE/GUI sel decision.ogg` |
+| `assets/audio/ui-cancel.ogg` | `Pokemon Anil V4.13/Audio/SE/GUI sel cancel.ogg` |
+| `assets/audio/ui-open.ogg` | `Pokemon Anil V4.13/Audio/SE/GUI menu open.ogg` |
+| `assets/audio/ui-close.ogg` | `Pokemon Anil V4.13/Audio/SE/GUI menu close.ogg` |
+| `assets/audio/ui-buy.ogg` | `Pokemon Anil V4.13/Audio/SE/Mart buy item.ogg` |
 | `assets/fonts/power_clear.otf` | `퓨전_한글패치.zip/Fonts_korean_v2/power_clear.otf` |
 | `assets/fonts/power_clear_bold.otf` | `퓨전_한글패치.zip/Fonts_korean_v2/power_clear_bold.otf` |
 | `assets/fonts/power_green.otf` | `퓨전_한글패치.zip/Fonts_korean_v2/power_green.otf` |
@@ -55,6 +84,33 @@ This HTML game uses only resources extracted from the user-provided `POKEMON ANI
 | `assets/fonts/power_green_small.otf` | `퓨전_한글패치.zip/Fonts_korean_v2/power_green_small.otf` |
 | `assets/fonts/power_red_and_blue.otf` | `퓨전_한글패치.zip/Fonts_korean_v2/power_red_and_blue.otf` |
 | `assets/fonts/power_red_and_blue_intl.otf` | `퓨전_한글패치.zip/Fonts_korean_v2/power_red_and_blue_intl.otf` |
+
+## Real-time Move Effects
+
+`assets/moves/*.png` are byte-for-byte copies of the identically named files in
+`Pokemon Anil V4.13/Graphics/Animations/`. No generated or external artwork is used.
+
+The source frame convention was checked in
+`Data/Scripts/034_Other battle code/008_BattleAnimationPlayer.rb` (lines 621-623):
+192x192 cells, five columns. Selected frame indices and move mappings live in
+`js/data/moveVisualAdapter.js`. Transparent margins are measured at load time;
+original PNG files are not edited.
+
+- Fire / water / electric: matching elemental PRAS sheets, separate travel and impact cells.
+- Razor Leaf: leaf cells from `PRAS- Magical Leaf.png`; Vine Whip: vine cells in `PRAS- Grass.png`.
+- Seed Bomb, Mud Shot, Gust, Bite, Bug Bite, Psybeam: corresponding named PRAS sheets.
+- Absorb family: `PRAS- Giga Drain.png`; Rock Throw: `PRAS- Rock.png`.
+- Other physical moves: `Tackle_B.png`; unmapped moves use an explicitly marked Anil type fallback.
+
+Movement, real-time timing and collision are adaptations for this game, not claims
+of exact playback of Anil's turn-based animation timelines. Dashed cast/landing
+outlines are no longer drawn as rectangular floor overlays. Only an unfilled
+circular landing marker remains for area projectiles. Cast preparation and melee
+lunges transform the existing Pokemon sprite; move effects still use original sheets.
+Tackle prepares for 0.60 seconds, then its 0.12-second forward strike applies damage.
+Enemy and player casts use the same timing table, with direction fixed at cast start.
+
+Validation: `node --test tests/combat.test.cjs`.
 
 ## Rule
 

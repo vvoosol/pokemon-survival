@@ -3,43 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Scientist RPG - Auto Battle Stage 8</title>
+  <title>과학자 RPG</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main id="gameRoot" class="game-root">
-    <section id="screenFrame" class="screen-frame" aria-label="Pokemon survivor RPG prototype">
-      <canvas id="gameCanvas" width="1280" height="720" aria-label="Game field"></canvas>
+    <section id="screenFrame" class="screen-frame" aria-label="과학자 RPG 게임 화면">
+      <canvas id="gameCanvas" width="1280" height="720" aria-label="게임 필드"></canvas>
 
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="전체화면 전환">
         전체화면
       </button>
 
-      <div class="hud-panel player-hud">
+      <div class="player-hud" aria-label="현재 포켓몬 상태">
         <div class="hud-title">
           <strong id="playerName">이상해씨</strong>
           <span id="playerLevel">Lv.5</span>
         </div>
-        <div class="meter-row">
-          <span>HP</span>
-          <div class="meter hp-meter"><div id="hpFill"></div></div>
-        </div>
-        <div class="meter-row">
-          <span>EXP</span>
-          <div class="meter exp-meter"><div id="expFill"></div></div>
-        </div>
-        <div class="meter-row text-row">
-          <span>BALL</span>
-          <strong id="ballCount">x10</strong>
-        </div>
+        <span id="playerMode" class="player-mode">트레이너</span>
+        <div class="databox-hp"><div id="hpFill"></div></div>
+        <div class="databox-exp"><div id="expFill"></div></div>
       </div>
 
       <div class="move-hud">
         <div id="moveCooldownList" class="move-cooldown-list" aria-label="Move cooldowns"></div>
       </div>
 
-      <div id="collectionPanel" class="collection-panel"></div>
-      <div id="partyPanel" class="party-panel" aria-label="Party Pokemon"></div>
+      <div id="collectionPanel" class="collection-panel" hidden></div>
+      <div id="partyPanel" class="party-panel" aria-label="파티 포켓몬"></div>
 
       <div id="levelToast" class="level-toast" hidden>LEVEL UP!</div>
       <div id="messageBox" class="message-box" hidden></div>
@@ -58,8 +49,16 @@
         </section>
       </div>
 
+      <div id="survivalHud" class="survival-hud" hidden></div>
+      <div id="survivalResult" class="game-over" hidden>
+        <div class="game-over-box">
+          <h1>15분 생존 성공!</h1>
+          <p id="survivalResultStats"></p>
+          <button id="survivalReturnBtn" type="button">허브로 돌아가기</button>
+        </div>
+      </div>
       <div id="debugPanel" class="debug-panel" hidden></div>
-      <div id="bootStatus" class="boot-status">게임 부팅 중...</div>
+      <div id="bootStatus" class="boot-status">게임을 불러오는 중...</div>
 
       <div id="gameOver" class="game-over" hidden>
         <div class="game-over-box">
@@ -84,6 +83,10 @@
             <strong>X</strong>
             <span id="xActionLabel">NO</span>
           </button>
+          <span class="ball-counter" aria-label="보유 몬스터볼">
+            <img src="assets/items/pokeball.png" alt="">
+            <strong id="ballCount">x10</strong>
+          </span>
         </div>
 
         <div class="system-buttons" aria-label="Menu buttons">
@@ -130,6 +133,7 @@
   <script src="js/systems/combatSystem.js"></script>
   <script src="js/systems/captureSystem.js"></script>
   <script src="js/systems/spawnSystem.js"></script>
+  <script src="js/systems/survivalSystem.js"></script>
   <script src="js/systems/upgradeSystem.js"></script>
   <script src="js/ui/uiManager.js"></script>
   <script src="js/game.js"></script>
