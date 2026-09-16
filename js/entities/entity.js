@@ -60,16 +60,25 @@ window.SurvivorRPG.Entity = class Entity {
     this.damageOffsetY *= Math.pow(0.002, dt);
   }
 
-  draw(ctx, camera, assets) {
+  draw(ctx, camera, assets, pose = null) {
     const img = assets.image(this.spriteKey);
     if (!img) return;
-    const row = { down: 0, left: 1, right: 2, up: 3 }[this.direction] || 0;
+    const facing = pose ? (Math.abs(pose.direction.x) > Math.abs(pose.direction.y)
+      ? (pose.direction.x > 0 ? 'right' : 'left') : (pose.direction.y > 0 ? 'down' : 'up')) : this.direction;
+    const row = { down: 0, left: 1, right: 2, up: 3 }[facing] || 0;
     const col = Math.floor(this.animTime) % 4;
     const size = this.drawSize;
     const screenX = Math.round(this.x - camera.x - size / 2 + this.damageOffsetX);
     const screenY = Math.round(this.y - camera.y - size / 2 + this.damageOffsetY);
 
     ctx.save();
+    if (pose) {
+      const centerX = this.x - camera.x, centerY = this.y - camera.y;
+      ctx.translate(centerX + pose.direction.x * pose.offset, centerY + pose.direction.y * pose.offset);
+      ctx.scale(1 / pose.squash, pose.squash);
+      ctx.translate(-centerX, -centerY);
+      ctx.filter = `brightness(${pose.brightness})`;
+    }
     if (this.hitFlash > 0) {
       ctx.filter = "brightness(2.6)";
     }

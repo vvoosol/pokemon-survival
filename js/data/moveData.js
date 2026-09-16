@@ -10,6 +10,8 @@ window.SurvivorRPG.MoveBehavior = {
 };
 
 window.SurvivorRPG.MoveData = {
+  scratch: { id: "scratch", sourceId: "SCRATCH", name: "할퀴기", type: "normal", category: "physical", power: 40, baseCooldown: 3, behavior: "MELEE_FRONT", range: 96, width: 92, piercing: true },
+  waterPulse: { id: "waterPulse", sourceId: "WATERPULSE", name: "물의파동", type: "water", category: "special", power: 60, baseCooldown: 4.5, behavior: "PROJECTILE", range: 230, width: 64, projectileSpeed: 450, piercing: true },
   tackle: {
     id: "tackle",
     sourceId: "TACKLE",
@@ -72,7 +74,7 @@ window.SurvivorRPG.MoveData = {
     baseCooldown: 2.8,
     behavior: "PROJECTILE",
     range: 170,
-    width: 72,
+    width: 40,
     projectileSpeed: 520,
     piercing: true
   },
@@ -97,9 +99,11 @@ window.SurvivorRPG.MoveData = {
     category: "physical",
     power: 45,
     baseCooldown: 2.9,
-    behavior: "BEAM",
-    range: 150,
-    width: 72,
+    behavior: "PROJECTILE",
+    castTime: 0.55,
+    range: 260,
+    width: 96,
+    projectileSpeed: 460,
     piercing: true
   },
   razorLeaf: {
@@ -110,10 +114,12 @@ window.SurvivorRPG.MoveData = {
     category: "physical",
     power: 60,
     baseCooldown: 4.4,
-    behavior: "MULTI_PROJECTILE",
-    range: 180,
-    width: 54,
-    projectileSpeed: 560,
+    behavior: "PROJECTILE",
+    castTime: 0.5,
+    range: 300,
+    width: 64,
+    projectileSpeed: 500,
+    visualSpin: 5,
     piercing: true
   },
   seedBomb: {
@@ -204,7 +210,7 @@ window.SurvivorRPG.MoveData = {
     baseCooldown: 2.65,
     behavior: "PROJECTILE",
     range: 180,
-    width: 68,
+    width: 30,
     projectileSpeed: 620,
     piercing: true
   },
@@ -218,7 +224,7 @@ window.SurvivorRPG.MoveData = {
     baseCooldown: 4.2,
     behavior: "PROJECTILE",
     range: 210,
-    width: 82,
+    width: 38,
     projectileSpeed: 600,
     piercing: true
   },
@@ -258,7 +264,7 @@ window.SurvivorRPG.MoveData = {
     baseCooldown: 2.85,
     behavior: "PROJECTILE",
     range: 165,
-    width: 72,
+    width: 28,
     projectileSpeed: 540,
     piercing: true
   },
@@ -298,7 +304,7 @@ window.SurvivorRPG.MoveData = {
     baseCooldown: 2.9,
     behavior: "PROJECTILE",
     range: 170,
-    width: 72,
+    width: 30,
     projectileSpeed: 560,
     piercing: true
   },
@@ -310,9 +316,9 @@ window.SurvivorRPG.MoveData = {
     category: "special",
     power: 40,
     baseCooldown: 3.0,
-    behavior: "MULTI_PROJECTILE",
+    behavior: "PROJECTILE",
     range: 155,
-    width: 54,
+    width: 24,
     projectileSpeed: 430,
     piercing: true
   },
@@ -339,7 +345,7 @@ window.SurvivorRPG.MoveData = {
     baseCooldown: 4.0,
     behavior: "PROJECTILE",
     range: 170,
-    width: 78,
+    width: 30,
     projectileSpeed: 480,
     piercing: true
   },
@@ -418,7 +424,7 @@ window.SurvivorRPG.MoveData = {
     baseCooldown: 3.9,
     behavior: "PROJECTILE",
     range: 175,
-    width: 74,
+    width: 36,
     projectileSpeed: 460,
     piercing: false
   },
@@ -458,7 +464,7 @@ window.SurvivorRPG.MoveData = {
     baseCooldown: 3.5,
     behavior: "PROJECTILE",
     range: 190,
-    width: 76,
+    width: 32,
     projectileSpeed: 580,
     piercing: true
   },

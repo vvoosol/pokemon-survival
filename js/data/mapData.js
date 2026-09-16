@@ -1,6 +1,13 @@
 window.SurvivorRPG = window.SurvivorRPG || {};
 
 (function defineMapData() {
+  window.SurvivorRPG.NpcSprites = {
+    PROFESSOR: { key: "npc-oak", src: "assets/npcs/oak.png" },
+    HUNTING_GUIDE: { key: "npc-brock", src: "assets/npcs/brock.png" },
+    RETURN_GUIDE: { key: "npc-brock", src: "assets/npcs/brock.png" },
+    HEALER: { key: "npc-nurse", src: "assets/npcs/enfermera.png" },
+    SHOP: { key: "npc-clerk", src: "assets/npcs/tendero.png" }
+  };
   const tileSources = {
     grassA: { sx: 0, sy: 0, sw: 32, sh: 32 },
     grassB: { sx: 32, sy: 0, sw: 32, sh: 32 },
@@ -20,6 +27,21 @@ window.SurvivorRPG = window.SurvivorRPG || {};
   };
 
   const maps = {
+    survival: {
+      ...commonMap, id: "survival", name: "15분 서바이벌", width: 2600, height: 1900,
+      playerStart: { x: 1300, y: 950 }, levelRange: [3, 50],
+      grassPatches: [], spawnZones: [],
+      paths: [{ x: 1248, y: 256, width: 96, height: 768 }],
+      npcs: [
+        { id: "survival_healer", type: "HEALER", name: "야전 치료소", x: 1300, y: 300 },
+        { id: "survival_return", type: "RETURN_GUIDE", name: "도전 중단 · 허브", x: 250, y: 950 }
+      ],
+      decorations: [
+        { type: "sign", x: 1240, y: 320 }, { type: "flower", x: 1350, y: 320 },
+        { type: "tree", x: 1140, y: 220 }, { type: "tree", x: 1190, y: 220 },
+        { type: "tree", x: 1410, y: 220 }, { type: "rock", x: 2100, y: 1450 }
+      ]
+    },
     hub: {
       ...commonMap,
       id: "hub",
@@ -29,10 +51,16 @@ window.SurvivorRPG = window.SurvivorRPG || {};
       playerStart: { x: 800, y: 620 },
       grassPatches: [],
       spawnZones: [],
+      paths: [
+        { x: 448, y: 704, width: 704, height: 96 },
+        { x: 736, y: 384, width: 128, height: 416 },
+        { x: 480, y: 480, width: 640, height: 96 }
+      ],
       npcs: [
-        { id: "guide", type: "HUNTING_GUIDE", name: "사냥터 안내", x: 760, y: 440, dialogue: "어느 사냥터로 이동하시겠습니까?" },
-        { id: "healer", type: "HEALER", name: "회복 담당", x: 560, y: 520, dialogue: "포켓몬을 치료하시겠습니까?" },
-        { id: "shop", type: "SHOP", name: "상점", x: 1040, y: 520, dialogue: "필요한 도구가 있나요?" }
+        { id: "oak", type: "PROFESSOR", name: "오박사", x: 800, y: 790 },
+        { id: "guide", type: "HUNTING_GUIDE", name: "웅이 · 사냥터", x: 760, y: 440, dialogue: "어느 사냥터로 이동하시겠습니까?" },
+        { id: "healer", type: "HEALER", name: "간호사 · 치료", x: 560, y: 520, dialogue: "포켓몬을 치료하시겠습니까?" },
+        { id: "shop", type: "SHOP", name: "상점 점원", x: 1040, y: 520, dialogue: "필요한 도구가 있나요?" }
       ],
       decorations: [
         { type: "sign", x: 736, y: 500 }, { type: "flower", x: 688, y: 520 }, { type: "flower", x: 912, y: 520 },
@@ -71,6 +99,10 @@ window.SurvivorRPG = window.SurvivorRPG || {};
       levelRange,
       playerStart: { x: 420, y: 520 },
       returnPoint: { x: 390, y: 615, width: 84, height: 84 },
+      paths: [
+        { x: 320, y: 576, width: 416, height: 96 },
+        { x: 384, y: 576, width: 96, height: 320 }
+      ],
       npcs: [{ id: `${id}_return`, type: "RETURN_GUIDE", name: "허브 귀환", x: 380, y: 610, dialogue: "마을로 돌아가시겠습니까?" }],
       grassPatches: spawnZones.map((item) => ({ x: item.x, y: item.y, width: item.width, height: item.height, style: item.spawnStyle })),
       spawnZones,
@@ -103,6 +135,7 @@ window.SurvivorRPG = window.SurvivorRPG || {};
 
   window.SurvivorRPG.Maps = maps;
   window.SurvivorRPG.HuntingAreas = [
+    { id: "survival", name: "15분 서바이벌", recommendedLevelMin: 5, recommendedLevelMax: 50, mapId: "survival" },
     { id: "hunting_01", name: "초보 초원", recommendedLevelMin: 1, recommendedLevelMax: 10, mapId: "hunting_01" },
     { id: "hunting_02", name: "깊은 길", recommendedLevelMin: 11, recommendedLevelMax: 20, mapId: "hunting_02" },
     { id: "hunting_03", name: "고급 사냥터", recommendedLevelMin: 21, recommendedLevelMax: 30, mapId: "hunting_03" }

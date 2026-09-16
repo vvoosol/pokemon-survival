@@ -5,20 +5,22 @@ window.addEventListener("DOMContentLoaded", async () => {
   };
 
   const updateFrameScale = () => {
-    const padding = document.fullscreenElement ? 0 : 8;
-    const scale = Math.min((window.innerWidth - padding * 2) / 1280, (window.innerHeight - padding * 2) / 720);
+    const viewportWidth = window.visualViewport?.width || window.innerWidth;
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    const scale = Math.min(viewportWidth / 1280, viewportHeight / 720);
     document.documentElement.style.setProperty("--screen-scale", Math.max(0.1, scale).toString());
   };
   updateFrameScale();
   window.addEventListener("resize", updateFrameScale);
   window.addEventListener("orientationchange", updateFrameScale);
+  window.visualViewport?.addEventListener("resize", updateFrameScale);
 
   try {
     setBootStatus("게임 데이터를 불러오는 중...");
     const game = new window.SurvivorRPG.Game(document.getElementById("gameCanvas"));
     window.currentSurvivorRPG = game;
     await game.init();
-    document.getElementById("restartBtn").addEventListener("click", () => game.reset());
+    document.getElementById("restartBtn").addEventListener("click", () => game.survival ? game.travelToHub() : game.reset());
     document.getElementById("fullscreenBtn").addEventListener("click", async () => {
       const frame = document.getElementById("gameRoot");
       try {

@@ -61,6 +61,12 @@ window.SurvivorRPG = window.SurvivorRPG || {};
   };
 
   const speciesAbilities = {
+    charmander: { abilities: ["BLAZE"], hiddenAbilities: ["SOLARPOWER"], dexNo: 4, pokedex: "꼬리 끝의 불꽃으로 몸의 상태를 알 수 있다." },
+    charmeleon: { abilities: ["BLAZE"], hiddenAbilities: ["SOLARPOWER"], dexNo: 5, pokedex: "날카로운 발톱과 뜨거운 불꽃으로 싸운다." },
+    charizard: { abilities: ["BLAZE"], hiddenAbilities: ["SOLARPOWER"], dexNo: 6, pokedex: "하늘을 날며 강력한 불꽃을 내뿜는다." },
+    squirtle: { abilities: ["TORRENT"], hiddenAbilities: ["RAINDISH"], dexNo: 7, pokedex: "등껍질로 몸을 지키고 물을 뿜어 공격한다." },
+    wartortle: { abilities: ["TORRENT"], hiddenAbilities: ["RAINDISH"], dexNo: 8, pokedex: "풍성한 꼬리와 귀를 움직이며 헤엄친다." },
+    blastoise: { abilities: ["TORRENT"], hiddenAbilities: ["RAINDISH"], dexNo: 9, pokedex: "등의 포신에서 강력한 물줄기를 발사한다." },
     bulbasaur: { abilities: ["OVERGROW"], hiddenAbilities: ["CHLOROPHYLL"], dexNo: 1, pokedex: "태어났을 때부터 등에 이상한 씨앗이 심어져 있으며 몸과 함께 자란다." },
     ivysaur: { abilities: ["OVERGROW"], hiddenAbilities: ["CHLOROPHYLL"], dexNo: 2, pokedex: "등의 꽃봉오리가 커지면 두 발로 서기 힘들어진다." },
     venusaur: { abilities: ["OVERGROW"], hiddenAbilities: ["CHLOROPHYLL"], dexNo: 3, pokedex: "등의 꽃은 태양 에너지를 받아 큰 꽃잎을 펼친다." },

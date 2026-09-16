@@ -3,6 +3,8 @@ window.SurvivorRPG = window.SurvivorRPG || {};
 (function definePokemonData() {
   const learnsetMoveMap = {
     TACKLE: "tackle",
+    SCRATCH: "scratch",
+    WATERPULSE: "waterPulse",
     QUICKATTACK: "quickAttack",
     BITE: "bite",
     HYPERFANG: "hyperFang",
@@ -55,6 +57,12 @@ window.SurvivorRPG = window.SurvivorRPG || {};
   };
 
   const raw = {
+    charmander: s("CHARMANDER", "파이리", ["fire"], [39, 52, 43, 65, 60, 50], 5, "parabolic", 45, 62, "charmander", 190, 24, 1.15, [1, "SCRATCH", 6, "EMBER", 24, "FLAMETHROWER", 28, "FLAMEBURST"], [{ method: "level", level: 16, target: "charmeleon" }]),
+    charmeleon: s("CHARMELEON", "리자드", ["fire"], [58, 64, 58, 80, 80, 65], 16, "parabolic", 45, 142, "charmeleon", 198, 27, 1.2, [1, "SCRATCH", 1, "EMBER", 30, "FLAMETHROWER", 32, "FLAMEBURST"], [{ method: "level", level: 36, target: "charizard" }]),
+    charizard: s("CHARIZARD", "리자몽", ["fire", "flying"], [78, 84, 78, 100, 109, 85], 36, "parabolic", 45, 267, "charizard", 200, 30, 1.2, [1, "SCRATCH", 1, "EMBER", 30, "FLAMETHROWER", 32, "FLAMEBURST", 36, "WINGATTACK"]),
+    squirtle: s("SQUIRTLE", "꼬부기", ["water"], [44, 48, 65, 43, 50, 64], 5, "parabolic", 45, 63, "squirtle", 180, 24, 1.15, [1, "TACKLE", 6, "WATERGUN", 8, "BUBBLE", 12, "BITE", 15, "WATERPULSE"], [{ method: "level", level: 16, target: "wartortle" }]),
+    wartortle: s("WARTORTLE", "어니부기", ["water"], [59, 63, 80, 58, 65, 80], 16, "parabolic", 45, 142, "wartortle", 186, 27, 1.2, [1, "TACKLE", 1, "WATERGUN", 1, "BUBBLE", 12, "BITE", 15, "WATERPULSE"], [{ method: "level", level: 36, target: "blastoise" }]),
+    blastoise: s("BLASTOISE", "거북왕", ["water"], [79, 83, 100, 78, 85, 105], 36, "parabolic", 45, 265, "blastoise", 180, 30, 1.2, [1, "TACKLE", 1, "WATERGUN", 1, "BUBBLE", 12, "BITE", 15, "WATERPULSE"]),
     bulbasaur: s("BULBASAUR", "이상해씨", ["grass", "poison"], [45, 49, 49, 45, 65, 65], 5, "parabolic", 45, 64, "bulbasaur", 190, 28, 1.35, [1, "TACKLE", 6, "VINEWHIP", 12, "RAZORLEAF", 13, "ACID", 18, "SEEDBOMB"], [{ method: "level", level: 16, target: "ivysaur" }]),
     ivysaur: s("IVYSAUR", "이상해풀", ["grass", "poison"], [60, 62, 63, 60, 80, 80], 16, "parabolic", 45, 142, "ivysaur", 198, 30, 1.3, [1, "TACKLE", 1, "VINEWHIP", 12, "RAZORLEAF", 20, "SEEDBOMB", 23, "ACID", 25, "MEGADRAIN", 36, "GIGADRAIN"], [{ method: "level", level: 32, target: "venusaur" }]),
     venusaur: s("VENUSAUR", "이상해꽃", ["grass", "poison"], [80, 82, 83, 80, 100, 100], 32, "parabolic", 45, 263, "venusaur", 186, 34, 1.35, [1, "TACKLE", 1, "VINEWHIP", 12, "RAZORLEAF", 20, "SEEDBOMB", 36, "GIGADRAIN", 39, "ACID"]),
@@ -129,6 +137,8 @@ window.SurvivorRPG = window.SurvivorRPG || {};
       baseExp,
       expReward: Math.max(10, Math.round(baseExp / 4)),
       sprite: `assets/pokemon/${spriteId}.png`,
+      icon: `assets/pokemon-icons/${spriteId}.png`,
+      frontSprite: `assets/pokemon-front/${spriteId}.png`,
       movementSpeed,
       radius,
       scale,

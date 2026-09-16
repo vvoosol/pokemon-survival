@@ -31,19 +31,19 @@ window.SurvivorRPG.InputManager = class InputManager {
       }
       if (event.key === "z" || event.key === "Z") {
         event.preventDefault();
-        this.switchPressed = true;
+        if (!event.repeat) this.switchPressed = true;
       }
       if (event.key === "x" || event.key === "X" || event.key === "c" || event.key === "C") {
         event.preventDefault();
-        this.ballPressed = true;
+        if (!event.repeat) this.ballPressed = true;
       }
       if (event.key === "Tab" || event.key === "v" || event.key === "V") {
         event.preventDefault();
-        this.partyPressed = true;
+        if (!event.repeat) this.partyPressed = true;
       }
       if (event.key === "Escape" || event.key === "Enter") {
         event.preventDefault();
-        this.menuPressed = true;
+        if (!event.repeat) this.menuPressed = true;
       }
       if (event.key === "F2") {
         event.preventDefault();

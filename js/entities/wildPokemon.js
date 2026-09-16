@@ -20,6 +20,8 @@ window.SurvivorRPG.WildPokemon = class WildPokemon extends window.SurvivorRPG.En
       .filter((moveId, index, list) => list.indexOf(moveId) === index)
       .slice(-2);
     if (!this.equippedMoves.length) this.equippedMoves = [data.wildMove || "wildBite"];
+    this.attackRange = Math.max(this.attackRange, ...this.equippedMoves.map((id) =>
+      Math.min(this.aggroRadius * 0.8, (window.SurvivorRPG.MoveData[id]?.range || 48) * 0.8)));
     this.state = "idle";
     this.roamTimer = 0.5 + Math.random() * 1.8;
     this.roamVector = { x: 0, y: 0 };
@@ -53,21 +55,22 @@ window.SurvivorRPG.WildPokemon = class WildPokemon extends window.SurvivorRPG.En
       this.state = "idle";
     }
 
-    if (this.state === "aggro") {
+    if (combatSystem.isActing(this)) {
+      this.vx = 0;
+      this.vy = 0;
+      this.windup = Math.max(0, this.windup - dt);
+    } else if (this.state === "aggro") {
       movementSystem.moveToward(this, player.x, player.y, dt, world);
       this.windup = 0;
     } else if (this.state === "attack") {
       this.vx = 0;
       this.vy = 0;
       if (this.attackCooldown <= 0 && this.windup <= 0) {
-        this.windup = 0.42;
+        this.windup = combatSystem.enemyAttack(this, player) || 0.6;
+        this.attackCooldown = this.data.attackCooldown + this.windup;
       }
       if (this.windup > 0) {
         this.windup -= dt;
-        if (this.windup <= 0) {
-          combatSystem.enemyAttack(this, player);
-          this.attackCooldown = this.data.attackCooldown;
-        }
       }
     } else {
       this.roam(dt, movementSystem, world);
@@ -140,15 +143,6 @@ window.SurvivorRPG.WildPokemon = class WildPokemon extends window.SurvivorRPG.En
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.ellipse(screenX, this.y - camera.y + this.radius * 0.8, this.radius * 1.15, this.radius * 0.44, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-    if (this.windup > 0) {
-      ctx.save();
-      ctx.strokeStyle = "rgba(255, 225, 75, 0.9)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(screenX, this.y - camera.y, this.attackRange, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
