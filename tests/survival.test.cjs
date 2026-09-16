@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 global.window = { SurvivorRPG: {} };
-for (const file of ['data/moveData.js', 'data/pokemonData.js', 'data/mapData.js',
+for (const file of ['data/moveData.js', 'data/pokemonData.js', 'data/growthData.js', 'data/mapData.js',
   'entities/entity.js', 'entities/playerPokemon.js', 'entities/wildPokemon.js',
   'systems/spawnSystem.js', 'systems/survivalSystem.js'])
   vm.runInThisContext(fs.readFileSync(path.join(__dirname, '../js', file), 'utf8'));
@@ -78,12 +78,12 @@ test('three-second kill cadence grows Lv.5 to approximately Lv.50 in fifteen min
   assert.ok(Number.isFinite(pokemon.expToNext));
   assert.ok(pokemon.exp >= 0 && pokemon.exp < pokemon.expToNext);
 });
-test('growth cap preserves higher-level party members and legacy experience thresholds', () => {
+test('survival cap preserves higher-level members after native curve migration', () => {
   const run = new R.SurvivalSystem();
   const p = new R.PlayerPokemon({ ...R.PokemonData.bulbasaur, level: 55, expToNext: 1234 }, 0, 0);
   assert.deepEqual(run.gainExperience(p, 1000), []);
   assert.equal(p.level, 55);
-  assert.equal(p.expToNext, 1234);
+  assert.equal(p.expToNext, R.GrowthData.next('parabolic', 55));
 });
 test('save restores elapsed time, captures, kills and healing cooldown', () => {
   const run = new R.SurvivalSystem({ elapsed: 320, kills: 75, captures: 3, healReadyAt: 337 });

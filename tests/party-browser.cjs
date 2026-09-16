@@ -172,7 +172,7 @@ const fs = require('node:fs');
     assert.deepEqual(await page.evaluate(() => {
       const g = currentSurvivorRPG;
       return [g.menuView, g.ownedPokemon.length, g.items.doubleBattle, g.items.tripleBattle, g.battleFormation, localStorage.getItem('scientistRpgSave')];
-    }), ['starterSelect', 1, false, false, 'single', null]);
+    }), ['starterSelect', 0, false, false, 'single', null]);
     await page.locator('[data-starter="squirtle"]').click();
     await page.locator('[data-change]').click();
     assert.equal(await page.evaluate(() => currentSurvivorRPG.partyPokemon[0].id), 'squirtle');

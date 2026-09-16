@@ -88,7 +88,7 @@ const fs = require('node:fs');
     await page.locator('#survivalReturnBtn').click();
     assert.equal(await page.evaluate(() => currentSurvivorRPG.currentMapId), 'hub');
     assert.equal(await page.evaluate(() => currentSurvivorRPG.ownedPokemon.length), 2);
-    // Losing also returns to hub without resetting the collection.
+    // Defeat now starts a new journey with Oak, without an automatic Bulbasaur.
     await page.evaluate(() => {
       const g = currentSurvivorRPG; g.travelToArea('survival');
       g.partyPokemon.forEach((p) => { p.dead = true; p.hp = 0; });
@@ -96,7 +96,10 @@ const fs = require('node:fs');
     });
     assert.equal(await page.evaluate(() => currentSurvivorRPG.survival.status), 'failed');
     await page.locator('#restartBtn').click();
-    assert.equal(await page.evaluate(() => currentSurvivorRPG.ownedPokemon.length), 2);
+    assert.equal(await page.evaluate(() => currentSurvivorRPG.ownedPokemon.length), 0);
+    await page.locator('[data-starter="charmander"]').click();
+    await page.locator('[data-change]').click();
+    assert.equal(await page.evaluate(() => currentSurvivorRPG.partyPokemon[0].id), 'charmander');
     await page.evaluate(() => { const g = currentSurvivorRPG; g.healParty(); g.travelToArea('survival'); g.testTick(0.05); g.ui.update(g); });
     await page.setViewportSize({ width: 844, height: 390 });
     await screenshot('survival-mobile');
@@ -106,6 +109,6 @@ const fs = require('node:fs');
       return r.left >= frame.left && r.right <= frame.right && r.bottom <= frame.bottom && hud.scrollWidth <= hud.clientWidth;
     }));
     assert.deepEqual(errors, []);
-    console.log('PASS: original NPC sprites, Z guide, survival entry, pause, capture, nurse, cooldown, save/load, victory, defeat, collection retention, mobile HUD');
+    console.log('PASS: NPC sprites, survival, pause, capture, nurse, save/load, victory collection retention, defeat starter choice, mobile HUD');
   } finally { await browser.close(); }
 })().catch((e) => { console.error(e); process.exitCode = 1; });
