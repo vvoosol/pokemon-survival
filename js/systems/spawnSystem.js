@@ -10,7 +10,7 @@ window.SurvivorRPG.SpawnSystem = class SpawnSystem {
     this.mapData = mapData;
     this.zones = (mapData.spawnZones || []).map((zone) => ({
       ...zone,
-      timer: Math.random() * 1.5
+      timer: this.randomRange(2.5, 6)
     }));
   }
 
@@ -20,8 +20,8 @@ window.SurvivorRPG.SpawnSystem = class SpawnSystem {
       zone.timer -= dt;
       const aliveInZone = enemies.filter((enemy) => !enemy.dead && enemy.spawnZoneId === zone.id).length;
       const aliveTotal = enemies.filter((enemy) => !enemy.dead).length;
-      if (zone.timer <= 0 && aliveInZone < zone.maxAlive && aliveTotal < this.maxTotalEnemies) {
-        enemies.push(this.spawnOne(zone));
+      if (zone.timer <= 0) {
+        if (aliveInZone < zone.maxAlive && aliveTotal < this.maxTotalEnemies) enemies.push(this.spawnOne(zone));
         zone.timer = this.randomRange(zone.respawnMin, zone.respawnMax);
       }
     }
@@ -55,7 +55,7 @@ window.SurvivorRPG.SpawnSystem = class SpawnSystem {
       specialAttack: Math.max(1, Math.round(stats.specialAttack * style.attack)),
       specialDefense: stats.specialDefense,
       speed: stats.speed,
-      expReward: Math.max(5, Math.round((base.baseExp || base.expReward || 40) * level / 18 * style.exp)),
+      expReward: Math.max(5, Math.floor((base.baseExp || base.expReward || 40) * level / 7 * style.exp * (level <= 10 ? 1.5 : 1))),
       spawnStyle
     };
   }

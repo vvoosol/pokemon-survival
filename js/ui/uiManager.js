@@ -40,6 +40,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     const player = game.player;
     if (!player) return;
     this.currentGame = game;
+    document.getElementById('gameRoot').dataset.awaitingStarter = String(!!game.awaitingStarter);
     this.playerName.textContent = player.name;
     this.playerLevel.textContent = `Lv.${player.level}`;
     this.playerMode.textContent = this.modeLabel(game.mode);
@@ -59,7 +60,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.messageBox.hidden = game.messageTimer <= 0;
     if (!this.messageBox.hidden) this.messageBox.textContent = game.messageText;
     this.gameOver.hidden = game.mode !== "gameOver";
-    document.getElementById("restartBtn").textContent = game.survival ? "허브로 돌아가기" : "다시 시작";
+    document.getElementById("restartBtn").textContent = "오박사에게 새 파트너 받기";
     this.updateSurvival(game);
     this.debugPanel.hidden = !game.debug;
     if (game.debug) {
@@ -185,6 +186,7 @@ window.SurvivorRPG.UIManager = class UIManager {
       card.className = `choice-card ${choice.rarity}`;
       card.dataset.selectable = "";
       card.innerHTML = `
+        <span class="choice-rarity">${{ common: '일반', rare: '희귀', hero: '영웅', legendary: '전설' }[choice.rarity]}</span>
         <strong>${choice.title}</strong>
         <span class="choice-summary">${choice.summary}</span>
         <span class="choice-description">${choice.description}</span>
@@ -286,18 +288,16 @@ window.SurvivorRPG.UIManager = class UIManager {
 
   renderMainMenu(game) {
     this.menuRoot.innerHTML = `
-      <section class="compact-screen">
-        <div class="menu-title">메뉴</div>
-        <div class="menu-list">
-          ${this.menuOption("pokedex", "assets/items/pokedex.png", "포켓몬 도감")}
-          ${this.menuOption("pokemon", "assets/items/pokemon-box-link.png", "포켓몬")}
-          ${this.menuOption("bag", "assets/ui/anil-bag.png", "가방")}
-          ${this.menuOption("mart", "assets/items/pokeball.png", "포켓마트")}
-          ${this.menuOption("formation", "assets/items/pokemon-box-link.png", "배틀 모드")}
-          ${this.menuOption("report", "assets/ui/anil-save-panels.png", "리포트")}
-          <button class="menu-option" data-action="close" data-selectable>닫기</button>
+      <section class="anil-pause-screen">
+        <div class="menu-list" aria-label="메뉴">
+          ${this.menuOption("pokemon", "assets/ui/pause/pokemonA.png", "포켓몬")}
+          ${this.menuOption("bag", "assets/ui/pause/bagA.png", "가방")}
+          ${this.menuOption("pokedex", "assets/ui/pause/pokedexA.png", "포켓몬 도감")}
+          ${this.menuOption("report", "assets/ui/pause/saveA.png", "리포트")}
+          ${this.menuOption("mart", "assets/ui/pause/playercardA.png", "포켓마트")}
+          ${this.menuOption("formation", "assets/ui/pause/optionsA.png", "배틀 모드")}
+          <button class="menu-option" data-action="close" data-selectable><span class="menu-option-content"><img class="menu-icon" src="assets/ui/pause/exitA.png" alt="">닫기</span></button>
         </div>
-        <div class="menu-help">방향키 이동 · Z 결정 · X 취소</div>
       </section>
     `;
     this.menuRoot.dataset.columns = "1";
@@ -335,11 +335,11 @@ window.SurvivorRPG.UIManager = class UIManager {
     } else if (game.menuView === 'starterSelect') {
       content = ['bulbasaur', 'charmander', 'squirtle'].map((id) => `<button class="menu-option" data-starter="${id}" data-selectable>
         <span class="menu-option-content"><span class="starter-icon" style="background-image:url('assets/pokemon-icons/${id}.png')"></span>${window.SurvivorRPG.PokemonData[id].name}</span></button>`).join('')
-        + '<button class="menu-option" data-back data-selectable>뒤로</button>';
+        + (game.awaitingStarter ? '' : '<button class="menu-option" data-back data-selectable>뒤로</button>');
     } else if (game.menuView === 'starterConfirm') {
       const name = window.SurvivorRPG.PokemonData[game.pendingStarter]?.name || '';
-      content = `<p class="professor-notice">첫 파트너를 ${name}(으)로 바꿀까요?<br>레벨·성장·HP 비율·소지품은 유지됩니다. 기술 강화·특성·타입은 새 파트너 기준으로 바뀝니다.</p>
-        <button class="menu-option" data-change data-selectable>변경하기</button>
+      content = `<p class="professor-notice">${game.awaitingStarter ? `${name}와 함께 새 모험을 시작할까요?` : `첫 파트너를 ${name}(으)로 바꿀까요?<br>레벨·성장·HP 비율·소지품은 유지됩니다. 기술 강화·특성·타입은 새 파트너 기준으로 바뀝니다.`}</p>
+        <button class="menu-option" data-change data-selectable>${game.awaitingStarter ? '파트너 받기' : '변경하기'}</button>
         <button class="menu-option" data-back data-selectable>취소</button>`;
     } else {
       content = `<p class="professor-notice">새 모험을 시작할까요?<br>포켓몬·재화·구매한 배틀 모드·도감·저장 리포트가 모두 초기화됩니다.</p>
@@ -358,114 +358,106 @@ window.SurvivorRPG.UIManager = class UIManager {
 
   renderPokemonMenu(game) {
     this.menuRoot.innerHTML = `
-      <section class="party-screen">
-        <div class="menu-title">포켓몬</div>
-        <div class="party-menu-list"></div>
-        <div class="menu-footer"><button class="menu-action" data-action="back" data-selectable>뒤로</button></div>
+      <section class="native-screen anil-party-screen" aria-label="포켓몬 파티">
+        <div class="anil-party-list"></div>
+        <div class="anil-party-message">포켓몬을 선택해 주세요.</div>
+        <button class="anil-cancel" data-action="back" data-selectable>취소</button>
       </section>
     `;
-    const list = this.menuRoot.querySelector(".party-menu-list");
-    game.partyPokemon.forEach((pokemon, index) => {
+    const list = this.menuRoot.querySelector(".anil-party-list");
+    for (let index = 0; index < 6; index++) {
+      const pokemon = game.partyPokemon[index];
+      const position = `left:${index % 2 * 256}px;top:${[0, 104, 200][Math.floor(index / 2)] + index % 2 * 26}px`;
+      if (!pokemon) {
+        list.insertAdjacentHTML('beforeend', `<div class="anil-party-empty" style="${position}" aria-label="빈 슬롯"></div>`);
+        continue;
+      }
       const hpRatio = Math.max(0, pokemon.hp / pokemon.maxHp) * 100;
       const row = document.createElement("button");
       row.type = "button";
-      row.className = `party-menu-row${pokemon.dead || pokemon.hp <= 0 ? " fainted" : ""}`;
+      row.className = `anil-party-row${index === 0 ? ' first' : ''}${pokemon.dead || pokemon.hp <= 0 ? " fainted" : ""}`;
+      row.style.cssText = position;
       row.dataset.summary = index;
       row.dataset.selectable = "";
       row.innerHTML = `
-        <img class="party-menu-icon" src="${this.iconFor(pokemon)}" alt="">
-        <strong class="party-menu-name">${pokemon.name}</strong>
-        <span class="party-menu-meta"><span>Lv.${pokemon.level}</span><span>HP ${pokemon.hp}/${pokemon.maxHp}</span></span>
-        <span class="inline-hp"><span style="width:${hpRatio}%"></span></span>
+        <span class="anil-party-ball"></span>
+        <span class="anil-party-icon" style="background-image:url('${this.iconFor(pokemon)}')"></span>
+        <span class="anil-party-name">${pokemon.name}</span>
+        <span class="anil-party-level">Lv.${pokemon.level}</span>
+        <span class="anil-party-hptext">${pokemon.hp} / ${pokemon.maxHp}</span>
+        <span class="anil-party-hp"><span style="width:${hpRatio}%;background-position-y:${hpRatio <= 20 ? -16 : hpRatio <= 50 ? -8 : 0}px"></span></span>
       `;
       list.appendChild(row);
-    });
+    }
     this.menuRoot.dataset.columns = "2";
     this.bindMenuButton("[data-summary]", (button) => {
-      this.summaryPage = "info";
+      this.summaryPage = "moves";
       game.openMenuView("summary", Number(button.dataset.summary));
     });
     this.bindMenuButton("[data-action='back']", () => game.openMenuView("main"), "cancel");
   }
 
+  typeIcon(type) {
+    const order = ['normal', 'fighting', 'flying', 'poison', 'ground', 'rock', 'bug', 'ghost', 'steel', 'unknown', 'fire', 'water', 'grass', 'electric', 'psychic', 'ice', 'dragon', 'dark', 'fairy'];
+    return `<span class="anil-type-icon" style="background-position:-${Math.max(0, order.indexOf(type)) * 24}px 0" title="${type}"></span>`;
+  }
+
   renderSummaryMenu(game, index) {
     const pokemon = game.partyPokemon[index] || game.partyPokemon[0];
-    if (!pokemon) {
-      game.openMenuView("pokemon");
-      return;
-    }
-    const ability = window.SurvivorRPG.DataAdapter.getAbilityData(pokemon.abilityId) || { name: "-", description: "" };
-    const types = (pokemon.baseTypes || pokemon.types || []).map((type) => type.toUpperCase()).join(" / ");
-    let detailHtml = "";
-    if (this.summaryPage === "stats") {
-      detailHtml = `
-        <div class="summary-stat-grid">
-          <span>HP</span><strong>${pokemon.hp} / ${pokemon.maxHp}</strong>
-          <span>공격</span><strong>${pokemon.attack}</strong>
-          <span>방어</span><strong>${pokemon.defense}</strong>
-          <span>특수공격</span><strong>${pokemon.specialAttack}</strong>
-          <span>특수방어</span><strong>${pokemon.specialDefense}</strong>
-          <span>스피드</span><strong>${pokemon.speed}</strong>
-          <span>이동 속도</span><strong>${pokemon.movementSpeed.toFixed(0)}</strong>
-        </div>
-      `;
-    } else if (this.summaryPage === "moves") {
-      detailHtml = `<div class="summary-move-list">${pokemon.equippedMoves.map((slot) => {
-        const move = window.SurvivorRPG.DataAdapter.getMoveData(slot.moveId);
+    if (!pokemon) { game.openMenuView('pokemon'); return; }
+    const page = this.summaryPage;
+    this.menuOverlay.dataset.summaryPage = page;
+    const ability = window.SurvivorRPG.DataAdapter.getAbilityData(pokemon.abilityId);
+    const slots = Array.from({ length: 4 }, (_, i) => pokemon.equippedMoves[i]);
+    let detail;
+    if (page === 'moves') {
+      detail = `<div class="anil-move-list">${slots.map((slot, i) => {
+        const move = slot && window.SurvivorRPG.MoveData[slot.moveId];
+        if (!move) return '<div class="anil-move-row empty"><span class="anil-move-name">-</span><span class="anil-move-cd">--</span></div>';
         const cooldown = game.statSystem.calculateMoveCooldown(move, pokemon.speed, slot.upgradeLevel || 0);
-        return `<div class="summary-move"><strong>${move.name}</strong><br>${move.type.toUpperCase()} · ${move.category} · 위력 ${move.power} · ${cooldown.toFixed(1)}초 · +${slot.upgradeLevel || 0}</div>`;
-      }).join("")}</div>`;
+        return `<button class="anil-move-row" data-move-detail="${i}" data-selectable data-description="${move.category === 'physical' ? '물리' : '특수'} · 위력 ${move.power} · 강화 +${slot.upgradeLevel || 0}">
+          ${this.typeIcon(move.type)}<span class="anil-move-name">${move.name}</span><span class="anil-move-cd"><small>쿨타임</small> ${cooldown.toFixed(1)}초</span></button>`;
+      }).join('')}</div><div class="anil-move-detail"></div>`;
     } else {
-      detailHtml = `
-        <p>도감 번호: No.${String(pokemon.data.dexNo || 0).padStart(3, "0")}</p>
-        <p>타입: <strong>${types}</strong></p>
-        <p>테라스탈: <strong>${pokemon.teraType ? pokemon.teraType.toUpperCase() : "없음"}</strong></p>
-        <p>특성: <strong>${ability.name}</strong></p>
-        <p>${ability.description}</p>
-      `;
+      const rows = page === 'stats' ? [['HP', `${pokemon.hp} / ${pokemon.maxHp}`], ['공격', pokemon.attack], ['방어', pokemon.defense],
+        ['특수공격', pokemon.specialAttack], ['특수방어', pokemon.specialDefense], ['스피드', pokemon.speed], ['이동 속도', pokemon.movementSpeed.toFixed(0)]]
+        : [['도감 번호', `No.${String(pokemon.data.dexNo || 0).padStart(3, '0')}`], ['이름', pokemon.name],
+          ['레벨', pokemon.level], ['경험치', `${pokemon.exp} / ${pokemon.expToNext}`], ['특성', ability.name],
+          ['원래 타입', (pokemon.baseTypes || pokemon.types).map(type => this.typeIcon(type)).join(' ')],
+          ['테라스탈', pokemon.teraType ? this.typeIcon(pokemon.teraType) : '없음']];
+      detail = `<dl class="anil-summary-data">${rows.map(([label, value]) => `<dt>${label}</dt><dd>${value}</dd>`).join('')}</dl>
+        <div class="anil-summary-note">${page === 'stats' ? 'HP ' + pokemon.hp + ' / ' + pokemon.maxHp : ability.description}</div>`;
     }
-    this.menuRoot.innerHTML = `
-      <section class="summary-screen">
-        <div class="menu-title">포켓몬 상태</div>
-        <div class="summary-tabs">
-          <button data-page="info" class="${this.summaryPage === "info" ? "active" : ""}" data-selectable>정보</button>
-          <button data-page="stats" class="${this.summaryPage === "stats" ? "active" : ""}" data-selectable>능력치</button>
-          <button data-page="moves" class="${this.summaryPage === "moves" ? "active" : ""}" data-selectable>기술</button>
-        </div>
-        <div class="summary-layout">
-          <div class="summary-main">
-            <div class="summary-sprite-frame"><img src="${pokemon.data.frontSprite || pokemon.data.sprite}" alt=""></div>
-            <h2>${pokemon.name}</h2>
-            <p>Lv.${pokemon.level}</p>
-            <p>HP ${pokemon.hp} / ${pokemon.maxHp}</p>
-          </div>
-          <div class="summary-details">${detailHtml}</div>
-        </div>
-        <div class="menu-footer">
-          <button class="menu-action" data-up="${index}" ${index === 0 ? "disabled" : ""} data-selectable>위로 이동</button>
-          <button class="menu-action" data-down="${index}" ${index === game.partyPokemon.length - 1 ? "disabled" : ""} data-selectable>아래로 이동</button>
-          <button class="menu-action" data-action="back" data-selectable>뒤로</button>
-        </div>
-      </section>
-    `;
-    this.menuRoot.dataset.columns = "1";
-    this.bindMenuButton("[data-page]", (button) => {
+    this.menuRoot.innerHTML = `<section class="native-screen anil-summary-screen ${page === 'moves' ? 'moves' : 'info'}">
+      <h2 class="anil-summary-title">${{info:'포켓몬 정보',stats:'능력치',moves:'기술'}[page]}</h2>
+      <nav class="anil-summary-tabs" aria-label="상태 페이지">${[['info','정보'],['stats','능력치'],['moves','기술']].map(([key,label]) =>
+        `<button title="${label}" aria-label="${label}" aria-pressed="${page === key}" data-page="${key}" data-selectable class="${page === key ? 'active' : ''}" style="background-image:url('assets/ui/summary/page_${key === 'stats' ? 'skills' : key}.png')"></button>`).join('')}
+        <button class="anil-summary-back" data-action="back" title="파티로 돌아가기" aria-label="파티로 돌아가기" data-selectable></button>
+      </nav>
+      <div class="anil-summary-sprite"><img src="${pokemon.data.frontSprite}" alt="${pokemon.name}"></div>
+      <img class="anil-summary-ball" src="assets/ui/summary/icon_ball_POKEBALL.png" alt="">
+      <span class="anil-summary-name">${pokemon.name}</span><span class="anil-summary-level">${pokemon.level}</span>
+      <div class="anil-summary-types">${pokemon.types.map((type) => this.typeIcon(type)).join('')}</div>
+      ${detail}
+      <div class="anil-summary-party">${game.partyPokemon.map((p,i) => `<button data-party-preview="${i}" data-selectable title="${p.name}" aria-label="${p.name}" class="${index === i ? 'current' : ''}"><span style="background-image:url('${this.iconFor(p)}')"></span></button>`).join('')}</div>
+      <div class="anil-party-order">
+        <button data-up="${index}" ${index === 0 ? 'disabled' : ''} data-selectable title="파티 순서 앞으로" aria-label="파티 순서 앞으로"></button>
+        <button data-down="${index}" ${index === game.partyPokemon.length - 1 ? 'disabled' : ''} data-selectable title="파티 순서 뒤로" aria-label="파티 순서 뒤로"></button>
+      </div>
+    </section>`;
+    this.menuRoot.dataset.columns = '1';
+    this.bindMenuButton('[data-page]', (button) => {
       this.summaryPage = button.dataset.page;
-      this.menuOverlay.dataset.summaryPage = this.summaryPage;
-      this.selectedByView.set("summary", 0);
-      this.renderSummaryMenu(game, index);
-      this.selectedIndex = 0;
-      this.refreshSelection(false);
+      this.selectedByView.set('summary', 0);
+      this.renderSummaryMenu(game, index); this.selectedIndex = 0; this.refreshSelection(false);
     });
-    this.bindMenuButton("[data-up]", () => {
-      game.swapPartySlots(index, index - 1);
-      game.openMenuView("summary", index - 1);
+    this.bindMenuButton('[data-party-preview]', (button) => game.openMenuView('summary', Number(button.dataset.partyPreview)));
+    this.bindMenuButton('[data-move-detail]', (button) => {
+      this.menuRoot.querySelector('.anil-move-detail').textContent = button.dataset.description;
     });
-    this.bindMenuButton("[data-down]", () => {
-      game.swapPartySlots(index, index + 1);
-      game.openMenuView("summary", index + 1);
-    });
-    this.bindMenuButton("[data-action='back']", () => game.openMenuView("pokemon"), "cancel");
+    this.bindMenuButton('[data-up]', () => { game.swapPartySlots(index, index - 1); game.openMenuView('summary', index - 1); });
+    this.bindMenuButton('[data-down]', () => { game.swapPartySlots(index, index + 1); game.openMenuView('summary', index + 1); });
+    this.bindMenuButton("[data-action='back']", () => game.openMenuView('pokemon'), 'cancel');
   }
 
   renderPokedexMenu(game) {
@@ -739,6 +731,8 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.selectedByView.set(view, this.selectedIndex);
     const description = this.menuRoot.querySelector(".item-description");
     if (description && selected.dataset.description) description.textContent = selected.dataset.description;
+    const moveDetail = this.menuRoot.querySelector('.anil-move-detail');
+    if (moveDetail && selected.dataset.moveDetail !== undefined) moveDetail.textContent = selected.dataset.description;
     this.updatePokedexPreview();
     if (playSound) this.currentGame?.assets.play("uiCursor", 0.3);
   }

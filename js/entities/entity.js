@@ -82,6 +82,12 @@ window.SurvivorRPG.Entity = class Entity {
     if (this.hitFlash > 0) {
       ctx.filter = "brightness(2.6)";
     }
+    if (this.spriteLayout === 'strip') {
+      const frame = Math.floor(this.animTime) % Math.max(1, Math.floor(img.width / img.height));
+      ctx.drawImage(img, frame * img.height, 0, img.height, img.height, screenX, screenY, size, size);
+      ctx.restore();
+      return;
+    }
     ctx.drawImage(
       img,
       col * this.frameSize,

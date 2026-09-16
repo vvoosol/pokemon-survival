@@ -26,7 +26,7 @@ window.SurvivorRPG.StatSystem = class StatSystem {
     const base = (((2 * attacker.level / 5 + 2) * move.power * attackStat / Math.max(1, defenseStat)) / 50) + 2;
     const attackerTypes = this.activeTypes(attacker);
     const defenderTypes = this.activeTypes(defender);
-    const stab = attackerTypes.includes(move.type) ? 1.5 : 1;
+    const stab = attackerTypes.includes(move.type) ? (attacker.teraType ? 1.8 : 1.5) : 1;
     const type = window.SurvivorRPG.DataAdapter?.typeMultiplier(move.type, defenderTypes) ?? 1;
     const beforeAbility = window.SurvivorRPG.AbilityRuntime?.beforeDamage(defender, move) || { immune: false, label: "-" };
     const ability = window.SurvivorRPG.AbilityRuntime?.damageModifier(attacker, defender, move, { base, stab, type }) || { multiplier: 1, label: "-" };
@@ -90,7 +90,7 @@ window.SurvivorRPG.StatSystem = class StatSystem {
   }
 
   applyNativeStatsForLevel(entity) {
-    const species = window.SurvivorRPG.PokemonData[entity.speciesId];
+    const species = window.SurvivorRPG.EvolutionSystem?.battleSpecies(entity) || window.SurvivorRPG.PokemonData[entity.speciesId];
     const beforeMaxHp = entity.maxHp;
     entity.nativeStats = this.calculateNativeStats(species, entity.level);
     this.recalculateStats(entity);

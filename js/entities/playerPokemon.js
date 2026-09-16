@@ -24,8 +24,13 @@ window.SurvivorRPG.PlayerPokemon = class PlayerPokemon extends window.SurvivorRP
     };
     this.maxHp = this.nativeStats.maxHp;
     this.hp = data.currentHp ?? data.hp ?? this.maxHp;
-    this.exp = data.exp || 0;
-    this.expToNext = data.expToNext || 30;
+    this.growthRate = data.growthRate || 'medium';
+    this.level = Math.max(1, Math.min(100, this.level));
+    this.expToNext = window.SurvivorRPG.GrowthData.next(this.growthRate, this.level);
+    // Legacy exponential saves retain their level and fractional bar progress.
+    this.exp = data.growthVersion === 1 || !data.expToNext ? (data.exp || 0)
+      : Math.floor(Math.max(0, Math.min(0.999999, (data.exp || 0) / data.expToNext)) * this.expToNext);
+    this.exp = this.level === 100 ? 0 : Math.min(this.expToNext - 1, this.exp);
     this.equippedMoves = this.normalizeMoveSlots(data.equippedMoves || [data.playerMove || "tackle"], data.moveUpgradeLevels);
     this.moveId = this.equippedMoves[0]?.moveId || "tackle";
     this.moveUpgradeLevels = this.moveUpgradeMap();
@@ -40,6 +45,8 @@ window.SurvivorRPG.PlayerPokemon = class PlayerPokemon extends window.SurvivorRP
     this.baseTypes = data.baseTypes ? [...data.baseTypes] : [...(data.types || this.types || [])];
     this.teraType = data.teraType || null;
     this.hasTerastallized = data.hasTerastallized || !!this.teraType;
+    if (this.teraType) this.types = [this.teraType];
+    this.megaFormId = null;
     this.evolutionData = data.evolutionData || null;
     this.spriteKey = data.id;
   }
@@ -89,16 +96,17 @@ window.SurvivorRPG.PlayerPokemon = class PlayerPokemon extends window.SurvivorRP
   }
 
   gainExp(amount) {
-    if (this.fainted) return [];
-    this.exp += amount;
+    if (this.fainted || this.level >= 100 || !Number.isFinite(amount) || amount <= 0) return [];
+    this.exp += Math.floor(amount);
     const levelEvents = [];
-    while (this.exp >= this.expToNext) {
+    while (this.level < 100 && this.exp >= this.expToNext) {
       this.exp -= this.expToNext;
       const fromLevel = this.level;
       this.level += 1;
-      this.expToNext = Math.floor(this.expToNext * 1.35 + 8);
+      this.expToNext = window.SurvivorRPG.GrowthData.next(this.growthRate, this.level);
       levelEvents.push({ fromLevel, toLevel: this.level });
     }
+    if (this.level >= 100) this.exp = 0;
     return levelEvents;
   }
 

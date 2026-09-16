@@ -16,8 +16,8 @@ http://127.0.0.1:8787/
 - The timer counts active Pokemon combat only. Trainer mode, capture sequences, menus and level-up choices pause the challenge clock and new waves.
 - Z still recalls/deploys Pokemon; X still throws a ball in trainer mode. Captures and party growth persist when returning to the hub.
 - The nurse is north of the arena center. Walk within interaction range and press Z to heal the party. Treatment has a 25-second combat-time cooldown; it is not an automatic safe zone.
-- Survival rewards use a dedicated growth-progress adjustment without replacing the normal game's stored experience thresholds. A simulated kill every three seconds takes a Lv.5 starter to approximately Lv.49 in 15 minutes. Actual growth depends on combat and participation; survival reward growth stops at Lv.50.
-- The HUD shows remaining time, encounter levels, kills and the direction/readiness of the nurse. Clearing or losing returns to the hub without resetting the collection. Active-run elapsed time and treatment cooldown are saved with the existing report.
+- Survival rewards use a dedicated growth-progress adjustment over the native species growth table. A simulated kill every three seconds takes a Lv.5 starter to approximately Lv.49 in 15 minutes. Actual growth depends on combat and participation; survival reward growth stops at Lv.50.
+- The HUD shows remaining time, encounter levels, kills and the direction/readiness of the nurse. Clearing or voluntarily returning preserves the collection. Defeat/restart now begins a new journey at Oak, as described below. Active-run elapsed time and treatment cooldown are saved with the existing report.
 - Guide, healer and shop roles use the original Anil Brock, nurse and clerk field sheets, including directional facing and original alpha transparency.
 
 Validation: `node --test tests/combat.test.cjs tests/survival.test.cjs`.
@@ -135,3 +135,13 @@ Save version: `4` (new starter/formation fields are optional for older saves)
 Verification: `node --test tests/combat.test.cjs tests/survival.test.cjs`, plus
 `node tests/party-browser.cjs`, `node tests/browser-check.cjs`, and `node tests/survival-browser.cjs`
 with Playwright and Chrome available. Browser tests use isolated contexts and never modify the player's save.
+
+## Native UI and Progression Update
+
+- Pause menus now use Anil's original DP Pause Menu icons, translucent gray frame and orange selection border. Party and summary screens keep the original 512x384 layout, uniformly scaled inside the fixed 16:9 game surface with black side margins.
+- The party screen has all six staggered slots, original occupied/empty/selected/fainted panels, HP graphics and cancel button. The summary shows the front sprite, type icons, four moves, native page icons and party-order controls. Cooldown replaces PP because combat is real-time. Info/Stats pages remain available.
+- `growthData.js` copies all six original Anil level 1-100 experience tables. Old saves retain level and fractional EXP progress; new saves include per-Pokemon `growthVersion: 1`. Maximum level is 100.
+- Normal hunting EXP is base yield x defeated level / 7, adjusted by encounter style, with a 1.5x early reward bonus through wild Lv.10. These rewards are real-time balance adjustments, not an exact recreation of Anil's turn-based EXP modifiers. A normal Lv.5 Rattata grants 54 EXP; a Lv.5 Parabolic starter needs 44 EXP for Lv.6.
+- Per-zone respawns: NORMAL 9-15 seconds (was 4-8), SWARM 6-10 (was 2.5-5), ELITE 14-22 (was 6-10). Initial encounters wait 2.5-6 seconds. Full zones do not bank an instant replacement spawn. Survival waves now run every 4.0 to 2.2 seconds instead of 2.6 to 1.4; the four-sided opener and 15-minute goal remain.
+- Restarting after defeat, including survival defeat, clears the current run/report and starts at Oak with no owned Pokemon. Choose and confirm a Lv.5 Bulbasaur, Charmander or Squirtle to receive a full-health partner. Play/save/closing the choice stays blocked until selection. Regular launch still preserves the existing default flow; this restart change does not silently delete existing browser saves on page load.
+- Checks: `node --test tests/combat.test.cjs tests/survival.test.cjs tests/progression.test.cjs` and `node tests/anil-ui-browser.cjs` in addition to the existing browser suites.

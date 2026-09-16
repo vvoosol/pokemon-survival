@@ -116,6 +116,22 @@ Validation: `node --test tests/combat.test.cjs`.
 
 ## Rule
 
+### Native UI Reference Pass
+
+`assets/ui/pause/*.png` are unchanged copies of `Graphics/Pictures/DP Pause Menu/`.
+The frame is assembled from `bgTop.png`, `bgMid.png`, `bgBtm.png`; only the border
+of `selector.png` is used (its baked-in Spanish label is not rendered).
+Party blank panels, ball marks and cancel states come unchanged from `Graphics/UI/Party/`.
+Summary page icons, party panel, navigation arrows and ball marker come unchanged
+from `Graphics/UI/Summary/`. The existing native summary/party backgrounds are reused
+at their original 512x384 proportions. No new UI bitmap artwork was generated.
+The horizontal `types_mini.png` strip uses 24x24 cells; Pokemon icon sheets use the
+first 64x64 cell, separate from the four-direction follower sheets.
+
+The six growth tables in `js/data/growthData.js` come from
+`Data/Scripts/025_Hardcoded data/002_GrowthRate.rb`, including Anil's exact low-level
+Parabolic values. The real-time early EXP bonus and spawn intervals are custom balance.
+
 NPC field sprites are unmodified copies from `Graphics/Characters/`:
 `assets/npcs/brock.png` (Brock, hunting/return guide),
 `assets/npcs/enfermera.png` (Pokemon Center nurse, all healers including survival),

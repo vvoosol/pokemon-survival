@@ -2,9 +2,9 @@ window.SurvivorRPG = window.SurvivorRPG || {};
 
 (function defineAnilAdapter() {
   const typeNames = {
-    normal: "Normal", fire: "Fire", water: "Water", electric: "Electric", grass: "Grass", ice: "Ice",
-    fighting: "Fighting", poison: "Poison", ground: "Ground", flying: "Flying", psychic: "Psychic",
-    bug: "Bug", rock: "Rock", ghost: "Ghost", dragon: "Dragon", dark: "Dark", steel: "Steel", fairy: "Fairy"
+    normal: "노말", fire: "불꽃", water: "물", electric: "전기", grass: "풀", ice: "얼음",
+    fighting: "격투", poison: "독", ground: "땅", flying: "비행", psychic: "에스퍼",
+    bug: "벌레", rock: "바위", ghost: "고스트", dragon: "드래곤", dark: "악", steel: "강철", fairy: "페어리"
   };
   const allTypes = Object.keys(typeNames);
 
@@ -129,7 +129,7 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     species.hiddenAbilities = meta.hiddenAbilities;
     species.dexNo = meta.dexNo;
     species.pokedex = meta.pokedex;
-    species.icon = `assets/pokemon/${speciesId}.png`;
+    species.icon = `assets/pokemon-icons/${speciesId}.png`;
     species.tmLearnset = tmLearnsets[speciesId] || [];
   });
 
@@ -158,6 +158,7 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     getEvolutionData: (speciesId) => window.SurvivorRPG.PokemonData[speciesId]?.evolutions || [],
     getLearnset: (speciesId) => window.SurvivorRPG.PokemonData[speciesId]?.learnset || [],
     getTMLearnset: (speciesId) => {
+      if (window.SurvivorRPG.TMCompatibility) return [...(window.SurvivorRPG.TMCompatibility[speciesId] || [])];
       const species = window.SurvivorRPG.PokemonData[speciesId];
       if (species?.tmLearnset?.length) return species.tmLearnset;
       const fallback = tmFallbackByFamily[speciesId];

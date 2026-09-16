@@ -595,11 +595,11 @@ button {
   background-image: url("assets/ui/summary/info.png");
 }
 
-.menu-overlay[data-summary-page="stats"] .menu-window {
+.menu-overlay[data-view="summary"][data-summary-page="stats"] .menu-window {
   background-image: url("assets/ui/summary/stats.png");
 }
 
-.menu-overlay[data-summary-page="moves"] .menu-window {
+.menu-overlay[data-view="summary"][data-summary-page="moves"] .menu-window {
   background-image: url("assets/ui/summary/moves.png");
 }
 
@@ -1126,8 +1126,13 @@ button {
 }
 
 .choice-card.rare {
-  color: #fff3a4;
+  color: #ffe45c;
 }
+.choice-card.common { color: #fff; }
+.choice-card.hero { color: #d7a1ff; }
+.choice-card.legendary { color: #ff7777; border-color: #ff4545; outline-color: #932727; }
+.choice-rarity { font-size: 18px; margin-bottom: 10px; }
+.choice-card strong { overflow-wrap: anywhere; }
 
 .choice-card.is-selected,
 .choice-card.selected {
@@ -1223,6 +1228,86 @@ button {
 .orientation-notice {
   display: none;
 }
+
+/* Native Anil screens keep the original 512x384 coordinates and pixel aspect. */
+.native-screen { position: absolute; width: 512px; height: 384px; transform: scale(1.875); transform-origin: top left; color: white; font-size: 22px; font-weight: 400; text-shadow: 1px 2px #52616a; image-rendering: pixelated; }
+.native-screen button { font: inherit; color: inherit; text-shadow: inherit; cursor: pointer; border: 0; padding: 0; background-color: transparent; }
+.native-screen [data-selectable].is-selected::before { content: none; }
+.native-screen button:focus-visible { outline: 2px solid white; outline-offset: -3px; }
+.menu-window--compact { border: 0; outline: 0; background: url("assets/ui/pause/bgTop.png") top / 100% 24px no-repeat, url("assets/ui/pause/bgBtm.png") bottom / 100% 24px no-repeat, url("assets/ui/pause/bgMid.png") center / 100% 4px repeat-y; }
+.menu-window--compact :is(.menu-option,.menu-action) { background: transparent; border: 5px solid transparent; padding: 4px 10px; min-height: 54px; font-size: 26px; }
+.menu-window--compact :is(.menu-option,.menu-action).is-selected { color: white; border-image: url("assets/ui/pause/selector.png") 8 stretch; }
+.menu-window--compact [data-selectable].is-selected::before { content: none; }
+.menu-window--compact .menu-title { font-size: 30px; }
+.menu-window--compact .professor-notice { font-size: 24px; }
+.menu-overlay[data-view="pokemon"], .menu-overlay[data-view="summary"] { background: #000; }
+.screen-frame:has(#mainMenuOverlay:not([hidden])) :is(.player-hud,.party-panel,.move-hud,.message-box,.level-toast,.survival-hud,.gameboy-controls,.fullscreen-button) { visibility: hidden; }
+#gameRoot[data-awaiting-starter="true"] :is(.player-hud,.party-panel,.move-hud,.gameboy-controls) { visibility: hidden; }
+.menu-overlay[data-view="main"] { background: transparent; }
+.menu-overlay[data-view="main"] .menu-window--compact { width: 388px; min-height: 0; margin: 12px 12px 0 auto; padding: 16px 12px; align-self: start; border: 0; outline: 0; background: url("assets/ui/pause/bgTop.png") top / 100% 24px no-repeat, url("assets/ui/pause/bgBtm.png") bottom / 100% 24px no-repeat, url("assets/ui/pause/bgMid.png") center / 100% 4px repeat-y; }
+.anil-pause-screen .menu-list { gap: 0; }
+.anil-pause-screen .menu-option { min-height: 66px; padding: 4px 10px; font-size: 32px; font-weight: 400; background: transparent; color: #fff; }
+.anil-pause-screen .menu-option-content { gap: 18px; }
+.anil-pause-screen .menu-icon { width: 56px; height: 50px; }
+.anil-pause-screen .is-selected { border: 6px solid transparent; border-image: url("assets/ui/pause/selector.png") 8 stretch; padding: 0 4px; }
+.anil-pause-screen .is-selected::before { content: none; }
+.anil-party-screen { background: url("assets/ui/party/bg.png") 0 0 / 512px 384px; }
+.anil-party-row, .anil-party-empty { position: absolute; width: 256px; height: 96px; background: url("assets/ui/party/panel_blank.png") 0 0 / 256px 96px no-repeat; }
+.native-screen .anil-party-row { text-align: left; background-image: url("assets/ui/party/panel-rect.png"); background-size: 256px 96px; }
+.anil-party-row.first { background-image: url("assets/ui/party/panel-round.png"); }
+.anil-party-row.is-selected { background-image: url("assets/ui/party/panel-rect-selected.png"); }
+.anil-party-row.first.is-selected { background-image: url("assets/ui/party/panel-round-selected.png"); }
+.anil-party-row.fainted { background-image: url("assets/ui/party/panel-rect-faint.png"); }
+.anil-party-row.fainted.is-selected { background-image: url("assets/ui/party/panel-rect-faint-selected.png"); }
+.anil-party-row.first.fainted { background-image: url("assets/ui/party/panel-round-faint.png"); }
+.anil-party-row.first.fainted.is-selected { background-image: url("assets/ui/party/panel-round-faint-selected.png"); }
+.anil-party-ball { position: absolute; left: 0; top: 0; width: 44px; height: 56px; background: url("assets/ui/party/icon_ball.png") center / contain no-repeat; }
+.is-selected .anil-party-ball { background-image: url("assets/ui/party/icon_ball_sel.png"); }
+.anil-party-icon { position: absolute; left: 36px; top: 10px; width: 64px; height: 64px; background-size: 128px 64px; }
+.anil-party-name { position: absolute; left: 102px; right: 8px; top: 22px; font-size: 21px; white-space: nowrap; }
+.anil-party-level { position: absolute; left: 20px; top: 65px; font-size: 20px; }
+.anil-party-hptext { position: absolute; right: 12px; top: 65px; font-size: 24px; }
+.anil-party-hp { position: absolute; left: 100px; top: 51px; width: 136px; height: 14px; background: url("assets/ui/party/hp-back.png") center / 136px 14px no-repeat; padding: 3px 3px 3px 24px; }
+.anil-party-hp > span { display: block; height: 8px; background: url("assets/ui/party/hp.png") 0 0 / 109px 24px no-repeat; }
+.anil-party-message { position: absolute; left: 0; top: 324px; width: 400px; height: 60px; padding: 17px 14px; font-size: 22px; background: url("assets/ui/pause/bgTop.png") top / 100% 12px no-repeat, url("assets/ui/pause/bgBtm.png") bottom / 100% 12px no-repeat, url("assets/ui/pause/bgMid.png") center / 100% 2px repeat-y; }
+.native-screen .anil-cancel { position: absolute; left: 400px; top: 336px; width: 112px; height: 48px; background: url("assets/ui/party/icon_cancel.png") 0 0 / 112px 48px no-repeat; font-size: 22px; }
+.native-screen .anil-cancel.is-selected { background-image: url("assets/ui/party/icon_cancel_sel.png"); }
+.anil-summary-screen { background: url("assets/ui/summary/info.png") 0 0 / 512px 384px; }
+.anil-summary-screen.moves { background-image: url("assets/ui/summary/moves.png"); }
+.anil-summary-title { position: absolute; margin: 0; left: 12px; top: 0; font-size: 23px; font-weight: 400; }
+.anil-summary-tabs { position: absolute; left: 286px; top: 0; display: flex; gap: 10px; }
+.anil-summary-tabs button { width: 28px; height: 28px; background-size: 56px 28px; }
+.anil-summary-tabs button.active { background-position-x: -28px; }
+.anil-summary-tabs button.is-selected { filter: brightness(1.4); }
+.anil-summary-tabs .anil-summary-back { margin-left: 42px; background: url("assets/ui/pause/exitA.png") center / 27px 24px no-repeat; }
+.anil-summary-sprite { position: absolute; left: 60px; top: 124px; width: 104px; height: 104px; overflow: hidden; }
+.anil-summary-sprite img { height: 104px; width: auto; max-width: none; image-rendering: pixelated; }
+.anil-summary-ball { position: absolute; left: 8px; top: 265px; width: 28px; height: 28px; }
+.anil-summary-name { position: absolute; left: 44px; top: 266px; max-width: 164px; font-size: 22px; }
+.anil-summary-level { position: absolute; left: 33px; top: 300px; font-size: 20px; }
+.anil-summary-types { position: absolute; right: 302px; top: 299px; display: flex; gap: 4px; }
+.anil-type-icon { display: inline-block; width: 24px; height: 24px; flex-shrink: 0; background-image: url("assets/ui/types-mini.png"); background-size: 456px 24px; }
+.anil-move-list { position: absolute; left: 248px; top: 72px; width: 232px; }
+.native-screen .anil-move-row { position: relative; width: 232px; height: 64px; display: block; text-align: left; }
+.anil-move-row .anil-type-icon { position: absolute; left: 0; top: 0; }
+.anil-move-name { position: absolute; left: 28px; right: 0; top: -1px; font-size: 23px; white-space: nowrap; }
+.anil-move-cd { position: absolute; right: 0; top: 30px; width: 122px; display: flex; justify-content: space-between; font-size: 22px; }
+.anil-move-cd small { font-size: 17px; padding-top: 3px; }
+.anil-move-row.is-selected .anil-move-name { color: #ffe46b; }
+.anil-move-detail { position: absolute; left: 228px; top: 337px; width: 270px; font-size: 15px; line-height: 1.25; }
+.anil-summary-data { position: absolute; left: 230px; top: 60px; width: 267px; display: grid; grid-template-columns: 115px 1fr; gap: 8px; margin: 0; font-size: 19px; }
+.anil-summary-data dd { margin: 0; text-align: right; }
+.anil-summary-note { position: absolute; left: 231px; top: 268px; width: 260px; font-size: 18px; line-height: 1.35; }
+.anil-summary-party { position: absolute; left: 8px; bottom: 4px; display: flex; gap: 1px; }
+.anil-summary-party button { position: relative; width: 32px; height: 40px; }
+.anil-summary-party button.current { background: url("assets/ui/summary/party_panel_small.png") center / 32px 32px no-repeat; }
+.anil-summary-party button span { display: block; width: 32px; height: 32px; background-size: 64px 32px; }
+.anil-summary-party button.is-selected { filter: brightness(1.5); }
+.anil-party-order { position: absolute; right: 10px; bottom: 2px; display: flex; gap: 8px; }
+.anil-party-order button { width: 20px; height: 20px; background: url("assets/ui/summary/page_arrows.png") 0 0 / 40px 20px no-repeat; }
+.anil-party-order button + button { background-position-x: -20px; }
+.anil-party-order button:disabled { opacity: 0.35; cursor: default; }
+.anil-party-order button.is-selected { filter: brightness(1.6); }
 
 @media (pointer: coarse) {
   .joystick,

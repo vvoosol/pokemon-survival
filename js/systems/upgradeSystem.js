@@ -107,70 +107,48 @@ window.SurvivorRPG.UpgradeSystem = class UpgradeSystem {
   }
 
   makeHeroChoice(player, used) {
-    const candidates = [];
-    const adapter = window.SurvivorRPG.DataAdapter;
-    const hiddenAbilities = adapter.getHiddenAbilities(player.speciesId)
-      .filter((abilityId) => abilityId && abilityId !== player.abilityId)
-      .filter((abilityId) => {
-        const ability = adapter.getAbilityData(abilityId);
-        return ["SUPPORTED", "ADAPTED"].includes(ability.status);
-      });
-
-    hiddenAbilities.forEach((abilityId) => {
-      const ability = adapter.getAbilityData(abilityId);
-      const id = `hero_hidden_${abilityId}`;
-      if (used.has(id)) return;
-      candidates.push({
-        id,
-        rarity: "hero",
-        type: "hiddenAbility",
-        abilityId,
-        title: `Hidden Ability: ${ability.name}`,
-        summary: "Ability replacement",
-        description: `${player.name}'s ability changes permanently to ${ability.name}.`
-      });
-    });
-
-    if (!player.hasTerastallized && !used.has("hero_tera")) {
-      const typeId = this.randomTeraType(player);
-      const typeName = adapter.getTypeData(typeId).name;
-      candidates.push({
-        id: `hero_tera_${typeId}`,
-        groupId: "hero_tera",
-        rarity: "hero",
-        type: "teraType",
-        teraType: typeId,
-        title: `Tera Type: ${typeName}`,
-        summary: "Active type becomes a single Tera type",
-        description: `${player.name} keeps its base type, but battle typing becomes ${typeName}.`
-      });
-    }
-
-    if (!candidates.length) return null;
-    return candidates[Math.floor(Math.random() * candidates.length)];
-  }
-
-  makeLegendaryChoice(player, used) {
     const adapter = window.SurvivorRPG.DataAdapter;
     const pool = adapter.getCompatibleTMMoves(player.speciesId)
-      .filter((moveId) => !player.knowsMove?.(moveId))
-      .filter((moveId) => {
-        const move = adapter.getMoveData(moveId);
-        return move && move.category !== "status" && move.power > 0;
-      })
-      .filter((moveId) => !used.has(`legendary_tm_${moveId}`));
+      .filter(moveId => !player.knowsMove?.(moveId))
+      .filter(moveId => { const move = adapter.getMoveData(moveId); return move && move.category !== 'status' && move.power > 0; })
+      .filter(moveId => !used.has('hero_tm_' + moveId));
     if (!pool.length) return null;
     const moveId = pool[Math.floor(Math.random() * pool.length)];
     const move = adapter.getMoveData(moveId);
-    return {
-      id: `legendary_tm_${moveId}`,
-      rarity: "legendary",
-      type: "learnTmMove",
-      moveId,
-      title: `TM: ${move.name}`,
-      summary: `${move.type.toUpperCase()} ${move.category} Power ${move.power}`,
-      description: `${player.name} can learn one compatible damaging TM move at +0.`
-    };
+    return { id: 'hero_tm_' + moveId, rarity: 'hero', type: 'learnTmMove', moveId,
+      title: '기술머신: ' + move.name,
+      summary: `${adapter.getTypeData(move.type).name} · ${move.category === 'physical' ? '물리' : '특수'} · 위력 ${move.power}`,
+      description: '호환 기술머신 기술을 배웁니다. 기술이 4개라면 하나를 교체합니다. 새 기술은 강화 +0입니다.' };
+  }
+
+  makeLegendaryChoice(player, used) {
+    const R = window.SurvivorRPG, candidates = [];
+    if (!player.hasTerastallized && !player.teraType && !used.has('legendary_tera')) {
+      const typeId = this.randomTeraType(player), typeName = R.DataAdapter.getTypeData(typeId).name;
+      candidates.push({ id: 'legendary_tera_' + typeId, groupId: 'legendary_tera', rarity: 'legendary',
+        type: 'teraType', teraType: typeId, title: '테라스탈: ' + typeName,
+        summary: typeName + ' 단일 타입 · 자속 1.8배',
+        description: '전투 타입이 영구적으로 바뀝니다. 이 타입의 기술만 자속 1.8배를 받으며 기존 타입의 자속은 사라집니다.' });
+    }
+    if (!player.megaFormId && !used.has('legendary_evolution')) {
+      const evolutions = R.DataAdapter.getEvolutionData(player.speciesId).filter(e => R.PokemonData[e.target]);
+      if (evolutions.length) {
+        const next = evolutions[Math.floor(Math.random() * evolutions.length)], target = R.PokemonData[next.target];
+        candidates.push({ id: 'early_' + next.target, groupId: 'legendary_evolution', rarity: 'legendary',
+          type: 'earlyEvolution', targetSpeciesId: next.target, title: '조기 진화: ' + target.name,
+          summary: '진화 레벨을 기다리지 않고 한 단계 진화',
+          description: '레벨·기술·강화는 유지하고 종족 능력치와 모습을 진화형으로 바꿉니다. 테라 타입도 유지됩니다.' });
+      } else {
+        const forms = R.EvolutionSystem.megaOptions(player.speciesId);
+        const form = forms[Math.floor(Math.random() * forms.length)];
+        if (form) candidates.push({ id: 'mega_' + player.speciesId + '_' + form.id, groupId: 'legendary_evolution',
+          rarity: 'legendary', type: 'megaEvolution', megaFormId: form.id, title: '메가진화: ' + form.name,
+          summary: form.adapted ? '능력치 강화형 · HP 외 종족값 20% 증가' : 'Anil 원본 메가폼으로 진화',
+          description: form.adapted ? '원본 메가폼이 없는 종입니다. 기존 외형을 유지하고 능력치를 한 번 강화합니다.'
+            : '원본 메가폼의 모습·타입·종족값을 적용합니다. 특성·기술·강화·레벨은 유지합니다.' });
+      }
+    }
+    return candidates.length ? candidates[Math.floor(Math.random() * candidates.length)] : null;
   }
 
   randomTeraType(player) {
@@ -198,15 +176,11 @@ window.SurvivorRPG.UpgradeSystem = class UpgradeSystem {
       }
       return true;
     }
-    if (choice.type === "hiddenAbility") {
-      player.abilityId = choice.abilityId;
-      player.ability = choice.abilityId;
-      this.statSystem.recalculateStats(player);
-      return true;
-    }
     if (choice.type === "teraType") {
+      if (player.hasTerastallized || !window.SurvivorRPG.DataAdapter.getAllTypes().includes(choice.teraType)) return false;
       player.teraType = choice.teraType;
       player.hasTerastallized = true;
+      player.types = [choice.teraType];
       return true;
     }
     return false;
@@ -216,16 +190,16 @@ window.SurvivorRPG.UpgradeSystem = class UpgradeSystem {
     const move = window.SurvivorRPG.MoveData[moveId];
     if (!move || level < 1 || level > 4) return null;
     const summaries = {
-      1: "Range up",
-      2: "Extra hit",
-      3: "Cooldown down",
-      4: "Multi direction"
+      1: "사거리 +20% · 폭 +30%",
+      2: "60% 위력의 추가 공격",
+      3: "기본 쿨타임 -20%",
+      4: "좌우 공격 줄 추가"
     };
     return {
       level,
       title: `${move.name} ${level}`,
       summary: summaries[level],
-      description: `${move.name} receives a level ${level} universal combat upgrade.`
+      description: `${move.name}의 ${level}단계 강화입니다. 이전 단계의 강화 효과도 유지됩니다.`
     };
   }
 

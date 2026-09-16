@@ -24,7 +24,7 @@ window.SurvivorRPG.SurvivalSystem = class SurvivalSystem {
     ];
     return { levelMin: Math.max(3, level - 2), levelMax: Math.min(50, level + 2),
       pool: pools[Math.min(4, Math.floor(this.elapsed / 180))],
-      cap: 16 + Math.floor(progress * 28), interval: 2.6 - progress * 1.2,
+      cap: 16 + Math.floor(progress * 28), interval: 4 - progress * 1.8,
       batch: this.elapsed < 300 ? 1 : this.elapsed < 600 ? 2 : 3 };
   }
 
@@ -76,7 +76,7 @@ window.SurvivorRPG.SurvivalSystem = class SurvivalSystem {
   }
 
   gainExperience(pokemon, reward) {
-    // Express run rewards as progress toward the existing threshold, keeping legacy saves intact.
+    // Survival keeps its timed level-50 target while using each species' native bar size.
     const fraction = this.rewardFraction(pokemon, reward);
     return fraction > 0 ? pokemon.gainExp(Math.ceil(pokemon.expToNext * fraction)) : [];
   }

@@ -20,7 +20,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     const game = new window.SurvivorRPG.Game(document.getElementById("gameCanvas"));
     window.currentSurvivorRPG = game;
     await game.init();
-    document.getElementById("restartBtn").addEventListener("click", () => game.survival ? game.travelToHub() : game.reset());
+    document.getElementById("restartBtn").addEventListener("click", () => game.restartAfterDefeat());
     document.getElementById("fullscreenBtn").addEventListener("click", async () => {
       const frame = document.getElementById("gameRoot");
       try {

@@ -70,6 +70,7 @@ window.SurvivorRPG.Game = class Game {
       ...[...new Map(Object.values(window.SurvivorRPG.NpcSprites).map((npc) => [npc.key, npc])).values()]
         .map((npc) => this.assets.loadImage(npc.key, npc.src)),
       window.SurvivorRPG.MoveVisualAdapter.load(this.assets),
+      ...Object.values(window.SurvivorRPG.MegaForms || {}).map(form => this.assets.loadImage(form.id, form.sprite)),
       ...Object.values(window.SurvivorRPG.PokemonData).map((pokemon) => this.assets.loadImage(pokemon.id, pokemon.sprite))
     ]);
     this.assets.loadSound("tackle", "assets/audio/tackle.wav");
@@ -88,6 +89,7 @@ window.SurvivorRPG.Game = class Game {
   }
 
   reset() {
+    this.awaitingStarter = false;
     this.menuOpen = false;
     this.menuView = "main";
     this.menuSelectedPokemonIndex = 0;
@@ -490,6 +492,7 @@ window.SurvivorRPG.Game = class Game {
   }
 
   startDeploy() {
+    if (this.awaitingStarter) return;
     const pokemon = this.selectedPokemon;
     if (!pokemon || pokemon.dead || pokemon.hp <= 0) {
       this.message("선택한 포켓몬은 더 싸울 수 없습니다.", 1.6);
@@ -710,10 +713,12 @@ window.SurvivorRPG.Game = class Game {
       teraType: overrides.teraType || null,
       hasTerastallized: overrides.hasTerastallized || false,
       exp: overrides.exp || 0,
-      expToNext: overrides.expToNext || 30
+      expToNext: overrides.expToNext,
+      growthVersion: overrides.growthVersion
     };
     const pokemon = new window.SurvivorRPG.PlayerPokemon(data, x, y);
     this.statSystem.recalculateStats(pokemon);
+    if (overrides.megaFormId) window.SurvivorRPG.EvolutionSystem.applyMega(pokemon, overrides.megaFormId, this.statSystem);
     return pokemon;
   }
 
@@ -891,7 +896,15 @@ window.SurvivorRPG.Game = class Game {
       }, 220);
       return;
     }
-    this.upgradeSystem.applyChoice(pokemon, choice);
+    if (choice.type === 'earlyEvolution') {
+      const allowed = window.SurvivorRPG.DataAdapter.getEvolutionData(pokemon.speciesId).some(evolution => evolution.target === choice.targetSpeciesId);
+      if (allowed && !pokemon.megaFormId) this.performEvolution(pokemon, choice.targetSpeciesId, 'EARLY_LEGENDARY');
+    } else if (choice.type === 'megaEvolution') {
+      if (window.SurvivorRPG.EvolutionSystem.applyMega(pokemon, choice.megaFormId, this.statSystem)) {
+        this.evolutionFlash = { pokemon, timer: 0.9, duration: 0.9 };
+        this.message(`${pokemon.name}(으)로 메가진화했다!`, 2);
+      }
+    } else this.upgradeSystem.applyChoice(pokemon, choice);
     pokemon.equippedMoves.forEach((slot) => {
       const move = window.SurvivorRPG.MoveData[slot.moveId];
       if (!move) return;
@@ -910,6 +923,7 @@ window.SurvivorRPG.Game = class Game {
   }
 
   toggleMenu() {
+    if (this.awaitingStarter) return;
     if (this.mode !== "trainer" && !this.menuOpen) {
       this.message("메뉴는 트레이너 모드에서 열 수 있습니다.", 1.4);
       return;
@@ -926,6 +940,7 @@ window.SurvivorRPG.Game = class Game {
   }
 
   openMenuView(view, index = 0) {
+    if (this.awaitingStarter && !['starterSelect', 'starterConfirm'].includes(view)) return;
     this.menuView = view;
     this.menuSelectedPokemonIndex = index;
     this.ui.showGameMenu(this);
@@ -933,6 +948,7 @@ window.SurvivorRPG.Game = class Game {
 
   backMenu() {
     if (!this.menuOpen) return;
+    if (this.awaitingStarter && this.menuView === 'starterSelect') return;
     if (this.menuView === "main") {
       this.toggleMenu();
       return;
@@ -1019,10 +1035,26 @@ window.SurvivorRPG.Game = class Game {
     if (this.menuView !== 'starterConfirm' || !this.professorAvailable()) return false;
     const id = this.pendingStarter;
     if (!['bulbasaur', 'charmander', 'squirtle'].includes(id)) return false;
+    if (this.awaitingStarter) {
+      const pokemon = this.createPartyPokemon(window.SurvivorRPG.PokemonData[id], this.trainer.x, this.trainer.y, { level: 5 });
+      pokemon.hp = pokemon.maxHp;
+      this.ownedPokemon = [pokemon];
+      this.partyPokemon = [pokemon];
+      this.selectedPokemon = this.player = pokemon;
+      this.starterId = pokemon.uniqueId;
+      this.selectedPartyIndex = 0;
+      this.awaitingStarter = false;
+      this.pendingStarter = null;
+      this.markPokedex(id, 'caught');
+      this.menuOpen = false;
+      this.ui.hideGameMenu();
+      this.message(`오박사에게 ${pokemon.name}을 받았다!`, 2.5);
+      return true;
+    }
     const old = this.ownedPokemon.find((pokemon) => pokemon.uniqueId === this.starterId);
     if (!old) return false;
     const replacement = this.createPartyPokemon(window.SurvivorRPG.PokemonData[id], old.x, old.y, {
-      uniqueId: old.uniqueId, level: old.level, exp: old.exp, expToNext: old.expToNext,
+      uniqueId: old.uniqueId, level: old.level, exp: old.exp, expToNext: old.expToNext, growthVersion: 1,
       growthBonuses: { ...old.growthBonuses }, currentHp: 1
     });
     replacement.hp = Math.min(replacement.maxHp, Math.max(old.hp > 0 ? 1 : 0,
@@ -1045,14 +1077,30 @@ window.SurvivorRPG.Game = class Game {
 
   resetAtProfessor() {
     if (this.menuView !== 'resetConfirm' || !this.professorAvailable()) return false;
+    this.beginStarterJourney();
+    return true;
+  }
+
+  restartAfterDefeat() {
+    if (this.mode !== 'gameOver') return false;
+    this.beginStarterJourney();
+    return true;
+  }
+
+  beginStarterJourney() {
     localStorage.removeItem('scientistRpgSave');
     this.reset();
+    this.awaitingStarter = true;
+    this.ownedPokemon = [];
+    this.partyPokemon = [];
+    this.reservePokemon = [];
+    this.starterId = null;
+    this.pokedex = {};
     this.trainer.x = 800; this.trainer.y = 730;
     this.camera.follow(this.trainer, 1);
     this.menuOpen = true;
     this.openMenuView('starterSelect');
     this.message('새 모험을 시작합니다. 첫 파트너를 선택하세요.', 2);
-    return true;
   }
 
   startBagUse(itemId) {
@@ -1103,6 +1151,7 @@ window.SurvivorRPG.Game = class Game {
   }
 
   saveGame() {
+    if (this.awaitingStarter) return false;
     const data = {
       version: this.saveVersion,
       savedAt: Date.now(),
@@ -1171,6 +1220,7 @@ window.SurvivorRPG.Game = class Game {
       level: pokemon.level,
       exp: pokemon.exp,
       expToNext: pokemon.expToNext,
+      growthVersion: 1,
       hp: pokemon.hp,
       growthBonuses: pokemon.growthBonuses,
       equippedMoves: pokemon.equippedMoves,
@@ -1179,7 +1229,8 @@ window.SurvivorRPG.Game = class Game {
       teraType: pokemon.teraType,
       hasTerastallized: pokemon.hasTerastallized,
       fainted: pokemon.fainted,
-      evolutionData: pokemon.evolutionData
+      evolutionData: pokemon.evolutionData,
+      megaFormId: pokemon.megaFormId
     };
   }
 
@@ -1191,6 +1242,7 @@ window.SurvivorRPG.Game = class Game {
       level: saved.level,
       exp: saved.exp,
       expToNext: saved.expToNext,
+      growthVersion: saved.growthVersion,
       currentHp: saved.hp,
       growthBonuses: saved.growthBonuses,
       equippedMoves: saved.equippedMoves,
@@ -1198,7 +1250,8 @@ window.SurvivorRPG.Game = class Game {
       baseTypes: saved.baseTypes || species.types,
       teraType: saved.teraType || null,
       hasTerastallized: saved.hasTerastallized || !!saved.teraType,
-      evolutionData: saved.evolutionData
+      evolutionData: saved.evolutionData,
+      megaFormId: saved.megaFormId
     });
     pokemon.fainted = !!saved.fainted || pokemon.hp <= 0;
     pokemon.dead = pokemon.fainted;
@@ -1248,7 +1301,7 @@ window.SurvivorRPG.Game = class Game {
     pokemon.id = newSpecies.id;
     pokemon.data = newSpecies;
     pokemon.name = pokemon.nickname || newSpecies.name;
-    pokemon.types = [...newSpecies.types];
+    pokemon.types = pokemon.teraType ? [pokemon.teraType] : [...newSpecies.types];
     pokemon.baseTypes = [...newSpecies.types];
     pokemon.spriteKey = newSpecies.id;
     pokemon.frameSize = newSpecies.frameSize || pokemon.frameSize;

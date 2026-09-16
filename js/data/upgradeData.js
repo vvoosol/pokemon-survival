@@ -22,7 +22,7 @@ window.SurvivorRPG.UpgradeData = {
       id: "attack_common",
       rarity: "common",
       title: "강한 공격",
-      summary: "Attack +8% / Sp. Atk +8%",
+      summary: "공격 +8% · 특수공격 +8%",
       description: "물리와 특수 공격력이 함께 올라갑니다.",
       statBonuses: { attackPct: 0.08, specialAttackPct: 0.08 }
     },
@@ -30,7 +30,7 @@ window.SurvivorRPG.UpgradeData = {
       id: "defense_common",
       rarity: "common",
       title: "단단한 방어",
-      summary: "Defense +8% / Sp. Def +8%",
+      summary: "방어 +8% · 특수방어 +8%",
       description: "받는 피해를 줄이는 방어 능력이 올라갑니다.",
       statBonuses: { defensePct: 0.08, specialDefensePct: 0.08 }
     },
@@ -38,7 +38,7 @@ window.SurvivorRPG.UpgradeData = {
       id: "speed_common",
       rarity: "common",
       title: "빠른 움직임",
-      summary: "Speed +6%",
+      summary: "스피드 +6%",
       description: "Speed가 올라가 자동 공격 쿨다운이 더 짧아집니다.",
       statBonuses: { speedPct: 0.06 }
     }
