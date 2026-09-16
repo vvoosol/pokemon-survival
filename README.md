@@ -9,6 +9,20 @@ C:\Users\User\Documents\New project\html-monster-resonance-game
 http://127.0.0.1:8787/
 ```
 
+## Survival Mode
+
+- Talk to Brock with Z and select the 15-minute survival area. The selected healthy Pokemon deploys at the arena center.
+- Enemies approach from four directions. Encounters advance from Lv.3-7 to Lv.46-50, with a maximum of 44 active enemies.
+- The timer counts active Pokemon combat only. Trainer mode, capture sequences, menus and level-up choices pause the challenge clock and new waves.
+- Z still recalls/deploys Pokemon; X still throws a ball in trainer mode. Captures and party growth persist when returning to the hub.
+- The nurse is north of the arena center. Walk within interaction range and press Z to heal the party. Treatment has a 25-second combat-time cooldown; it is not an automatic safe zone.
+- Survival rewards use a dedicated growth-progress adjustment without replacing the normal game's stored experience thresholds. A simulated kill every three seconds takes a Lv.5 starter to approximately Lv.49 in 15 minutes. Actual growth depends on combat and participation; survival reward growth stops at Lv.50.
+- The HUD shows remaining time, encounter levels, kills and the direction/readiness of the nurse. Clearing or losing returns to the hub without resetting the collection. Active-run elapsed time and treatment cooldown are saved with the existing report.
+- Guide, healer and shop roles use the original Anil Brock, nurse and clerk field sheets, including directional facing and original alpha transparency.
+
+Validation: `node --test tests/combat.test.cjs tests/survival.test.cjs`.
+Browser checks (Playwright/Chrome): `node tests/browser-check.cjs` and `node tests/survival-browser.cjs`.
+
 ## Stage 7 Features
 
 - Level-up choices now roll all four rarities independently per card: common 70%, rare 20%, hero 8%, legendary 2%.
@@ -66,7 +80,7 @@ Browser `localStorage` key:
 scientistRpgSave
 ```
 
-Save version: `3`
+Save version: `4` (new starter/formation fields are optional for older saves)
 
 ## Verification
 
@@ -106,3 +120,18 @@ Save version: `3`
 - Bag menu was added and can use Potion on party Pokemon in Trainer Mode.
 - Save data stores current map, current hunting area, money, and inventory.
 - Added `MoveVisualAdapter` as the separation layer for original Anil move animations and generic type fallback effects.
+
+## Starters and Party Battles
+
+- All unupgraded moves use one attack lane, including Razor Leaf and Bubble. Upgrade +2 adds the existing delayed 60% echo in the same lane; +4 unlocks two side lanes.
+- Professor Oak stands south of the hub start (800, 790). Approach and press Z for starter change or a confirmed new game.
+- Starter choices are Bulbasaur, Charmander and Squirtle. Changing the original starter preserves its identity, level, EXP, growth bonuses and HP ratio, plus the rest of the collection and currency. Moves/upgrades, ability and typing reset to the new species. The six fire/water starter evolution forms have original Anil sprites and level evolutions.
+- A confirmed new game removes this game's saved report and resets progress, then opens starter selection. Cancelling the confirmation changes nothing.
+- Poke Mart sells permanent Double Battle (200 won) and Triple Battle (300 won) unlocks. Buying one enables it; duplicate purchases are blocked. Menu > Battle Mode selects OFF, Double or Triple, exclusively.
+- Pokemon mode deploys up to 2/3 healthy party members in cyclic party order after the controlled Pokemon, staggered by 0.18 seconds. Companions follow, attack on their own move cooldowns, take damage, faint and earn participation EXP. Fainted members are skipped; reserves do not deploy.
+- Z recalls the whole formation. X rotates the leader without pausing combat and resets the newly deployed Pokemon's cooldowns. Owned field Pokemon all have the red marker. Switching back to OFF leaves only the controlled Pokemon.
+- Reports preserve purchased modes, enabled formation and starter identity. Legacy reports default to single mode and infer the starter from the first owned Pokemon.
+
+Verification: `node --test tests/combat.test.cjs tests/survival.test.cjs`, plus
+`node tests/party-browser.cjs`, `node tests/browser-check.cjs`, and `node tests/survival-browser.cjs`
+with Playwright and Chrome available. Browser tests use isolated contexts and never modify the player's save.

@@ -115,6 +115,32 @@ const path = require('node:path');
       console.log(name, JSON.stringify(layout));
     }
     await page.setViewportSize({ width: 1280, height: 720 });
+    for (const moveId of ['vineWhip', 'razorLeaf']) {
+      await page.evaluate((moveId) => {
+        const g = currentSurvivorRPG, p = g.activePokemon;
+        g.combatSystem.clear();
+        const target = g.enemies[0]; target.x = p.x + 260; target.y = p.y;
+        g.enemies = [target];
+        p.equippedMoves = p.normalizeMoveSlots([{ moveId, cooldownRemaining: 2 }]);
+        const cast = g.combatSystem.createCast(p, target, SurvivorRPG.MoveData[moveId]);
+        g.combatSystem.release(cast, p, []);
+      }, moveId);
+      let previousX = 0;
+      for (const [stage, dt] of [['early', 0.12], ['late', 0.24]]) {
+        const shot = await page.evaluate((dt) => {
+          const g = currentSurvivorRPG;
+          g.combatSystem.updateProjectiles(dt, g.activePokemon, []);
+          g.draw(); g.ui.update(g);
+          const shot = g.combatSystem.projectiles[0];
+          return { x: shot.x, diameter: shot.radius * 2, beam: shot.beam };
+        }, dt);
+        assert.ok(shot.x > previousX); previousX = shot.x;
+        assert.equal(shot.beam, false);
+        assert.equal(shot.diameter, moveId === 'vineWhip' ? 96 : 64);
+        await page.screenshot({ path: path.join(out, moveId + '-' + stage + '.png') });
+      }
+    }
+    console.log('PASS: large Vine Whip/Razor Leaf projectiles visibly travel across frames');
     await page.evaluate(() => {
       const g = currentSurvivorRPG, p = g.activePokemon;
       g.combatSystem.clear();

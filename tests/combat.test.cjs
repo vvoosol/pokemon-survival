@@ -74,10 +74,10 @@ test('piercing hits each enemy once', () => {
   assert.equal(target.hp, 90);
 });
 test('spread cannot triple hit the same target in one wave', () => {
-  const { combat, caster, target, cast } = setup('razorLeaf');
+  const { combat, caster, target, cast } = setup('razorLeaf', 4);
   target.x = 45;
   combat.release(cast, caster, [target]);
-  advance(combat, caster, [target], 1);
+  advance(combat, caster, [target], 0.15);
   assert.equal(target.hp, 90);
 });
 test('area projectile damages only at landing, using its circular footprint', () => {
@@ -94,12 +94,71 @@ test('area projectile damages only at landing, using its circular footprint', ()
   assert.equal(crossed.hp, 100);
 });
 test('beam damage waits until its visible front arrives', () => {
-  const { combat, caster, target, cast } = setup('vineWhip');
+  const { combat, caster, target, cast } = setup('flamethrower');
   combat.release(cast, caster, [target]);
   advance(combat, caster, [target], 0.05);
   assert.equal(target.hp, 100);
   advance(combat, caster, [target], 0.5);
   assert.equal(target.hp, 90);
+});
+
+test('vine whip is a large moving projectile, not a persistent beam', () => {
+  const { combat, caster, target, cast } = setup('vineWhip');
+  assert.equal(cast.windup, 0.55);
+  combat.release(cast, caster, [target]);
+  assert.equal(combat.projectiles.length, 1);
+  const shot = combat.projectiles[0];
+  assert.equal(shot.beam, false);
+  assert.equal(shot.radius * 2, 96);
+  assert.equal(target.hp, 100);
+  combat.update(0.15, caster, [target], false);
+  assert.equal(target.hp, 100);
+  assert.ok(shot.x > 60 && shot.x < 75);
+  combat.update(0.15, caster, [target], false);
+  assert.equal(target.hp, 90);
+  const behind = entity(20, 0);
+  combat.update(0.05, caster, [target, behind], false);
+  assert.equal(behind.hp, 100);
+  advance(combat, caster, [target, behind], 1);
+  assert.equal(combat.projectiles.length, 0);
+});
+
+test('razor leaf launches one large moving leaf before upgrades', () => {
+  const { combat, caster, target, cast } = setup('razorLeaf');
+  combat.release(cast, caster, [target]);
+  assert.equal(combat.projectiles.length, 1);
+  for (const shot of combat.projectiles) assert.equal(shot.radius * 2, 64);
+  combat.update(0.1, caster, [target], false);
+  const [middle] = combat.projectiles;
+  assert.equal(middle.y, 0);
+  assert.ok(middle.x > 0);
+  assert.equal(target.hp, 100);
+  assert.equal(MoveData.razorLeaf.visualSpin, 5);
+});
+test('every base move has one attack lane; extra lanes require upgrade four', () => {
+  const { combat, caster, target } = setup();
+  for (const move of Object.values(MoveData)) {
+    assert.equal(combat.createCast(caster, target, move).hitboxes.length, 1, move.id);
+    if (['PROJECTILE', 'MULTI_PROJECTILE', 'BEAM', 'AREA_TARGET'].includes(move.behavior)) {
+      assert.equal(combat.createCast(caster, target, move, 3).hitboxes.length, 1, move.id);
+      assert.equal(combat.createCast(caster, target, move, 4).hitboxes.length, 3, move.id);
+    }
+  }
+});
+test('each ally casts independently and hostile shots can damage companions', () => {
+  const { combat, caster, target } = setup();
+  const ally = entity(140, 0); ally.uniqueId = 'ally';
+  caster.x = 140; caster.y = 200;
+  target.x = 0; target.y = 0;
+  for (const fighter of [caster, ally]) fighter.equippedMoves = [{ moveId: 'ember', cooldownRemaining: 0 }];
+  combat.update(0.01, caster, [target], true, [ally]);
+  assert.deepEqual(combat.telegraphs.map((cast) => cast.caster.uniqueId), ['original', 'ally']);
+  assert.ok([caster, ally].every((p) => p.equippedMoves[0].cooldownRemaining === 3));
+  combat.telegraphs = [];
+  combat.release(combat.createCast(target, ally, MoveData.ember, 0, 'enemy'), caster, [target]);
+  combat.update(0.5, caster, [target], false, [ally]);
+  assert.equal(ally.hp, 90);
+  assert.equal(caster.hp, 100);
 });
 test('switching cannot change source damage or participation', () => {
   const { combat, caster, target, cast } = setup();

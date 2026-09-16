@@ -98,6 +98,8 @@ original PNG files are not edited.
 
 - Fire / water / electric: matching elemental PRAS sheets, separate travel and impact cells.
 - Razor Leaf: leaf cells from `PRAS- Magical Leaf.png`; Vine Whip: vine cells in `PRAS- Grass.png`.
+- Vine Whip travels as a 96px-wide piercing projectile (260px range, 460px/s), not a stationary beam. Razor Leaf emits one 64px leaf (300px range, 500px/s) with sprite rotation. All base moves use one attack lane; only upgrade +4 adds two side lanes. Image size and collision diameter use the same move width, including upgrades; neither is capped to Pokemon size.
+- Scratch uses frame 0 of `Scratch + Shadow Claw.png`; Water Pulse uses frame 0 of `PRAS- Water Pulse.png` in flight and frames 1-4 on impact. The original files are copied unchanged.
 - Seed Bomb, Mud Shot, Gust, Bite, Bug Bite, Psybeam: corresponding named PRAS sheets.
 - Absorb family: `PRAS- Giga Drain.png`; Rock Throw: `PRAS- Rock.png`.
 - Other physical moves: `Tackle_B.png`; unmapped moves use an explicitly marked Anil type fallback.
@@ -113,6 +115,24 @@ Enemy and player casts use the same timing table, with direction fixed at cast s
 Validation: `node --test tests/combat.test.cjs`.
 
 ## Rule
+
+NPC field sprites are unmodified copies from `Graphics/Characters/`:
+`assets/npcs/brock.png` (Brock, hunting/return guide),
+`assets/npcs/enfermera.png` (Pokemon Center nurse, all healers including survival),
+`assets/npcs/tendero.png` (shop clerk). Each original is 240x256, with 4x4 60x64
+frames and existing alpha transparency. NPCs face the nearby player using the
+original directional rows; no new character artwork is used.
+
+Professor Oak uses `Graphics/Characters/oak.png`, copied unchanged to
+`assets/npcs/oak.png` (the same 60x64 frame layout).
+
+Charmander, Charmeleon, Charizard, Squirtle, Wartortle and Blastoise use unchanged
+`Graphics/Characters/Followers/{SPECIES}.png`, `Graphics/Pokemon/Icons/{SPECIES}.png`
+and `Graphics/Pokemon/Front/{SPECIES}.png`, copied to the corresponding lowercase
+`assets/pokemon/`, `assets/pokemon-icons/` and `assets/pokemon-front/` paths.
+Their stats, level evolution thresholds and implemented damaging learnset entries
+come from `PBS/pokemon.txt`; unsupported original moves are not fabricated.
+Double/Triple Battle shop entries reuse the existing original Poke Ball item icon.
 
 Do not add external image assets. Any new visual asset must come from:
 
