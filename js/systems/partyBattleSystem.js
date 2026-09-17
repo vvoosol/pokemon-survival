@@ -61,7 +61,9 @@ window.SurvivorRPG.PartyBattleSystem = class PartyBattleSystem {
       const length = Math.hypot(dx, dy);
       const step = Math.min(1, length / Math.max(1, pokemon.movementSpeed * dt));
       const vector = length > 6 ? { x: dx / length * step, y: dy / length * step } : { x: 0, y: 0 };
+      const before={x:pokemon.x,y:pokemon.y};
       pokemon.update(dt, { movementVector: () => vector }, game.movementSystem, game.map);
+      if(length>30 && Math.hypot(pokemon.x-before.x,pokemon.y-before.y)<1)game.movementSystem.moveToward(pokemon,x,y,dt,game.map);
     });
   }
 };

@@ -1,0 +1,26 @@
+// Curated representatives, not a measured popularity ranking. Exactly 30 per generation.
+module.exports = [
+  [152,'CHIKORITA','치코리타',5],[153,'BAYLEEF','베이리프',18],[154,'MEGANIUM','메가니움',32],
+  [155,'CYNDAQUIL','브케인',5],[156,'QUILAVA','마그케인',18],[157,'TYPHLOSION','블레이범',36],
+  [158,'TOTODILE','리아코',5],[159,'CROCONAW','엘리게이',20],[160,'FERALIGATR','장크로다일',30],
+  [179,'MAREEP','메리프',5],[180,'FLAAFFY','보송송',18],[181,'AMPHAROS','전룡',30],
+  [175,'TOGEPI','토게피',5],[176,'TOGETIC','토게틱',24],
+  [183,'MARILL','마릴',8],[184,'AZUMARILL','마릴리',24],
+  [196,'ESPEON','에브이',28],[197,'UMBREON','블래키',28],
+  [200,'MISDREAVUS','무우마',22],[214,'HERACROSS','헤라크로스',26],
+  [212,'SCIZOR','핫삼',36],[227,'SKARMORY','무장조',32],[230,'KINGDRA','킹드라',40],
+  [220,'SWINUB','꾸꾸리',12],[221,'PILOSWINE','메꾸리',33],
+  [246,'LARVITAR','애버라스',16],[247,'PUPITAR','데기라스',30],[248,'TYRANITAR','마기라스',50],
+  [169,'CROBAT','크로뱃',32],[164,'NOCTOWL','야부엉',22],
+  [252,'TREECKO','나무지기',5],[253,'GROVYLE','나무돌이',18],[254,'SCEPTILE','나무킹',36],
+  [255,'TORCHIC','아차모',5],[256,'COMBUSKEN','영치코',18],[257,'BLAZIKEN','번치코',36],
+  [258,'MUDKIP','물짱이',5],[259,'MARSHTOMP','늪짱이',18],[260,'SWAMPERT','대짱이',36],
+  [280,'RALTS','랄토스',6],[281,'KIRLIA','킬리아',20],[282,'GARDEVOIR','가디안',30],
+  [304,'ARON','가보리',12],[305,'LAIRON','갱도라',32],[306,'AGGRON','보스로라',42],
+  [328,'TRAPINCH','톱치',14],[329,'VIBRAVA','비브라바',35],[330,'FLYGON','플라이곤',45],
+  [371,'BAGON','아공이',16],[372,'SHELGON','쉘곤',30],[373,'SALAMENCE','보만다',50],
+  [374,'BELDUM','메탕',16],[375,'METANG','메탕구',20],[376,'METAGROSS','메타그로스',45],
+  [302,'SABLEYE','깜까미',24],[277,'SWELLOW','스왈로',24],
+  [310,'MANECTRIC','썬더볼트',30],[315,'ROSELIA','로젤리아',22],
+  [291,'NINJASK','아이스크',24],[362,'GLALIE','얼음귀신',42]
+];

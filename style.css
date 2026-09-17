@@ -1080,7 +1080,7 @@ button {
 }
 
 .level-choice-box {
-  width: 920px;
+  width: 1040px;
   padding: 26px;
   color: #fff;
   background: url("assets/ui/window-fill.png") center / 128px 128px;
@@ -1131,7 +1131,7 @@ button {
 .choice-card.common { color: #fff; }
 .choice-card.hero { color: #d7a1ff; }
 .choice-card.legendary { color: #ff7777; border-color: #ff4545; outline-color: #932727; }
-.choice-rarity { font-size: 18px; margin-bottom: 10px; }
+.choice-rarity { font-size: 20px; margin-bottom: 10px; }
 .choice-card strong { overflow-wrap: anywhere; }
 
 .choice-card.is-selected,
@@ -1146,16 +1146,16 @@ button {
 
 .choice-card strong {
   margin-bottom: 10px;
-  font-size: 20px;
+  font-size: 24px;
 }
 
 .choice-summary {
   margin-bottom: 10px;
-  font-size: 16px;
+  font-size: 20px;
 }
 
 .choice-description {
-  font-size: 15px;
+  font-size: 20px;
   line-height: 1.4;
 }
 
@@ -1228,6 +1228,29 @@ button {
 .orientation-notice {
   display: none;
 }
+
+/* Share the original pause-window skin without changing layout or typography. */
+:is(.level-choice-box,.game-over-box,.boot-status,.message-box,.party-panel,.fullscreen-button) {
+  background: url("assets/ui/pause/bgTop.png") top / 100% 12px no-repeat,
+    url("assets/ui/pause/bgBtm.png") bottom / 100% 12px no-repeat,
+    url("assets/ui/pause/bgMid.png") center / 100% 4px repeat-y;
+  border-color: transparent;
+  outline-color: transparent;
+}
+.choice-card {
+  background: url("assets/ui/pause/bgMid.png") center / 100% 4px repeat-y;
+  border-color: #a4b2b7;
+  outline-color: #344348;
+}
+.choice-card.legendary { border-color: #ff4545; outline-color: #932727; }
+.choice-card.is-selected::after, .choice-card:focus-visible::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  border: 4px solid transparent; border-image: url("assets/ui/pause/selector.png") 8 stretch;
+}
+.choice-card.legendary.is-selected::after { inset: 4px; }
+.choice-card:disabled, .menu-option:disabled, .menu-action:disabled { opacity: .45; cursor: default; }
+.party-slot { background: url("assets/ui/pause/bgMid.png") center / 100% 4px repeat-y; border-color: #9aa9b0; }
+.party-slot.selected { border-image: url("assets/ui/pause/selector.png") 8 stretch; }
 
 /* Native Anil screens keep the original 512x384 coordinates and pixel aspect. */
 .native-screen { position: absolute; width: 512px; height: 384px; transform: scale(1.875); transform-origin: top left; color: white; font-size: 22px; font-weight: 400; text-shadow: 1px 2px #52616a; image-rendering: pixelated; }

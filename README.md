@@ -28,10 +28,10 @@ Browser checks (Playwright/Chrome): `node tests/browser-check.cjs` and `node tes
 - Level-up choices now roll all four rarities independently per card: common 70%, rare 20%, hero 8%, legendary 2%.
 - Common cards grant stat growth.
 - Rare cards upgrade one of the Pokemon's current four moves.
-- Hero cards can replace the current ability with a supported/adapted Hidden Ability.
-- Hero cards can grant a permanent Tera Type. Base types are preserved, while active battle typing becomes the single Tera Type.
-- Legendary cards can teach one compatible damaging TM move through the existing move learn/replace UI.
-- Save data is now version 2 and persists ability, base types, Tera Type, and Tera state.
+- Hero cards teach an unknown, compatible damaging TM move through the four-slot learn/replace UI. Eligibility intersects original TM items with each species' TutorMoves, not its level-up list.
+- Ability-change rewards are disabled. Existing abilities remain intact.
+- Legendary cards offer permanent single-type Terastallization or one-step early evolution; terminal species can receive Mega Evolution. Matching Tera STAB is 1.8, normal STAB is 1.5, and previous types no longer grant STAB after Terastallization.
+- Saves persist ability, base types, Tera state and an optional megaFormId without breaking older reports.
 - Summary and debug panels show Base Type, Tera Type, Active Type, Hidden Ability, and compatible TM candidates.
 - The battle HUD shows four independent move cooldown rows in the bottom-right.
 - UI font files are loaded from the user-provided Korean patch font archive.
@@ -86,8 +86,8 @@ Save version: `4` (new starter/formation fields are optional for older saves)
 
 - All JavaScript files pass `node --check`.
 - Rarity distribution test is close to 70/20/8/2.
-- Hero choices can produce Hidden Ability or Tera Type choices.
-- Legendary choices can produce compatible damaging TM moves.
+- Hero choices produce only compatible damaging TM moves.
+- Legendary choices produce Tera, early evolution or Mega choices, never ability changes.
 - Tera Type changes active battle type while preserving base type.
 
 ## Stage 8 Features
@@ -145,3 +145,15 @@ with Playwright and Chrome available. Browser tests use isolated contexts and ne
 - Per-zone respawns: NORMAL 9-15 seconds (was 4-8), SWARM 6-10 (was 2.5-5), ELITE 14-22 (was 6-10). Initial encounters wait 2.5-6 seconds. Full zones do not bank an instant replacement spawn. Survival waves now run every 4.0 to 2.2 seconds instead of 2.6 to 1.4; the four-sided opener and 15-minute goal remain.
 - Restarting after defeat, including survival defeat, clears the current run/report and starts at Oak with no owned Pokemon. Choose and confirm a Lv.5 Bulbasaur, Charmander or Squirtle to receive a full-health partner. Play/save/closing the choice stays blocked until selection. Regular launch still preserves the existing default flow; this restart change does not silently delete existing browser saves on page load.
 - Checks: `node --test tests/combat.test.cjs tests/survival.test.cjs tests/progression.test.cjs` and `node tests/anil-ui-browser.cjs` in addition to the existing browser suites.
+
+## Rewards and Generation Expansion
+
+- Added exactly 30 Gen 2 and 30 Gen 3 representatives, bringing the playable roster to 96 species. Each added generation covers all 18 types using Anil's own (sometimes modified) typing. This is a curated selection, not a measured popularity ranking. See [POKEMON_ROSTER.md](POKEMON_ROSTER.md).
+- All 60 use unmodified Anil follower/icon/front images, original base stats, catch rates, growth rates and abilities. Only supported damaging learnset entries are enabled; a basic Tackle is supplied when no implemented early attack exists. Missing later-generation evolutions are not falsely treated as fully evolved for Mega rewards.
+- Original level evolutions are preserved; non-level requirements within the roster become Lv.28. Early evolution advances one available stage and preserves level, learned moves/upgrades and Tera typing.
+- Added Lv.31-40 and Lv.41-50 hunting areas. All 60 species appear in level-appropriate weighted encounters and survival pools. Existing slower spawn timers and enemy caps stay unchanged.
+- Added 42 original damaging TM moves with delayed real-time attacks and collision. Original power/type/category are retained; cooldown, range and motion are adapted. Secondary turn-based effects, recoil, weather and status changes are not claimed to be implemented.
+- Source Mega forms use original front strips, types and stats. Their abilities remain unchanged. Final species without a native Mega retain their existing art and get a one-time 20% increase to non-HP base stats, explicitly described as an adapted Mega in the choice. Mega/Tera state survives saves and level growth.
+- Common/rare/hero/legendary text is white/yellow/purple/red; legendary cards also have red borders. Reward copy is enlarged within the fixed aspect-ratio viewport. Base rarity weights remain 70/20/8/2 per card; exhausted reward pools fall back to lower rarities.
+- Regenerate imports with `node tools/import-battle-rewards.cjs "C:\Users\User\Downloads\POKEMON ANIL V4.13\Pokemon Anil V4.13"`. Roster selection is in `tools/expansion-roster.cjs`.
+- Regression tests: `node --test tests/rewards-expansion.test.cjs`, and `node tests/rewards-browser.cjs` with Playwright/Chrome. These check all 60 sprites, every new TM's delayed hit, source compatibility, reward routes, Tera defense/STAB, Mega save round trips and desktop/mobile menus.

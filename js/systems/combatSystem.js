@@ -17,6 +17,7 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
     this.delayedAttacks = [];
     this.impacts = [];
     this.meleeSwings = [];
+    this.charges = [];
     this.damageNumbers = [];
     this.levelToastTime = 0;
   }
@@ -26,6 +27,7 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
     // Advance existing shots before releasing new casts: they never jump on their first frame.
     this.updateProjectiles(dt, player, enemies);
     this.updateMeleeSwings(dt, player, enemies);
+    this.updateCharges(dt,player,enemies);
     for (const box of this.hitboxes) box.time -= dt;
     this.hitboxes = this.hitboxes.filter((box) => box.time > 0);
     for (const impact of this.impacts) { impact.life -= dt; impact.age += dt; }
@@ -87,9 +89,17 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
 
   enemyAttack(enemy, player) {
     if (enemy.dead || !player || player.dead) return;
-    const id = enemy.equippedMoves?.[Math.floor(Math.random() * enemy.equippedMoves.length)] || 'wildBite';
+    const options=(enemy.equippedMoves || []).filter(id=>{
+      const behavior=window.SurvivorRPG.MoveData[id]?.behavior;
+      return enemy.aiType==='artillery'?behavior==='AREA_TARGET':enemy.aiType==='ranged'?['PROJECTILE','MULTI_PROJECTILE','BEAM'].includes(behavior):true;
+    });
+    const id = options[Math.floor(Math.random() * options.length)] || enemy.equippedMoves?.[0] || 'wildBite';
     const move = window.SurvivorRPG.MoveData[id] || window.SurvivorRPG.MoveData.wildBite;
-    const cast = this.createCast(enemy, player, move, 0, 'enemy');
+    const charger=enemy.aiType==='charger';
+    const attack=charger?{...move,behavior:'MELEE_FRONT',range:165,width:enemy.radius*2}:move;
+    const windup=enemy.aiType==='artillery'?1:charger ? 0.9 : Math.max(.55,this.windupFor(move));
+    const cast = this.createCast(enemy, player, attack, 0, 'enemy',windup);
+    cast.charge=charger;
     this.telegraphs.push(cast);
     return cast.timer;
   }
@@ -115,6 +125,11 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
   }
 
   release(cast, player, enemies) {
+    if(cast.team==='enemy')cast.caster.recovery=cast.charge ? 0.9 : 0.6;
+    if(cast.charge) {
+      this.charges.push({cast,remaining:cast.move.range,speed:520});
+      return;
+    }
     const behavior = cast.move.behavior;
     if (['PROJECTILE', 'MULTI_PROJECTILE', 'AREA_TARGET', 'BEAM'].includes(behavior)) {
       for (const box of cast.hitboxes) {
@@ -170,7 +185,25 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
 
   isActing(entity) {
     return this.telegraphs.some((cast) => cast.caster === entity)
-      || this.meleeSwings.some((swing) => swing.cast.caster === entity);
+      || this.meleeSwings.some((swing) => swing.cast.caster === entity)
+      || this.charges.some(charge=>charge.cast.caster===entity);
+  }
+
+  updateCharges(dt,player,enemies) {
+    const movement=window.SurvivorRPG.MovementSystem && new window.SurvivorRPG.MovementSystem();
+    for(const charge of this.charges) {
+      const {cast}=charge, caster=cast.caster;
+      if(caster.dead||this.isProtected(caster)){charge.remaining=0;continue;}
+      const from={x:caster.x,y:caster.y},distance=Math.min(charge.remaining,charge.speed*dt);
+      if(movement && this.world)movement.move(caster,cast.direction.x,cast.direction.y,distance/charge.speed,this.world,charge.speed/caster.movementSpeed);
+      else {caster.x+=cast.direction.x*distance;caster.y+=cast.direction.y*distance;}
+      for(const target of this.targets(cast,player,enemies)) {
+        if(this.segmentHitTime(from,caster,target,caster.radius+target.radius)!==null)this.hit(cast,target);
+      }
+      charge.remaining-=distance;
+      if(Math.hypot(caster.x-from.x,caster.y-from.y)<distance*.4)charge.remaining=0;
+    }
+    this.charges=this.charges.filter(charge=>charge.remaining>0);
   }
 
   poseFor(entity) {
@@ -194,8 +227,14 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
       const from = { x: shot.x, y: shot.y };
       shot.x += shot.direction.x * distance;
       shot.y += shot.direction.y * distance;
+      // Solid scenery clips shots at its near face; area attacks fizzle on obstruction.
+      const obstruction=this.wallIntersection(from,shot,shot.landing?4:Math.min(shot.radius,8));
+      if(obstruction) {
+        shot.x=obstruction.x;shot.y=obstruction.y;shot.remaining=0;shot.dead=true;
+        if(shot.landing)continue;
+      }
       shot.remaining = Math.max(0, shot.remaining - distance);
-      shot.length += distance;
+      shot.length += Math.hypot(shot.x-from.x,shot.y-from.y);
       if (shot.landing) {
         if (shot.remaining <= 0) {
           this.resolveShapes(shot.cast, [shot.landing], player, enemies);
@@ -246,10 +285,27 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
     return t >= 0 && t <= 1 ? t : null;
   }
 
+  wallIntersection(from,to,radius=0) {
+    if(!this.world?.colliders?.length)return null;
+    let earliest=Infinity;
+    for(const box of this.world.colliders) {
+      let near=0,far=1;
+      for(const [start,end,min,max] of [[from.x,to.x,box.x-radius,box.x+box.width+radius],
+        [from.y,to.y,box.y-radius,box.y+box.height+radius]]) {
+        const delta=end-start;
+        if(Math.abs(delta)<1e-8){if(start<min||start>max){near=Infinity;break;}continue;}
+        const a=(min-start)/delta,b=(max-start)/delta;
+        near=Math.max(near,Math.min(a,b));far=Math.min(far,Math.max(a,b));
+      }
+      if(near<=far && far>=0 && near<=1)earliest=Math.min(earliest,near);
+    }
+    return Number.isFinite(earliest)?{x:from.x+(to.x-from.x)*Math.max(0,earliest-.001),y:from.y+(to.y-from.y)*Math.max(0,earliest-.001)}:null;
+  }
+
   resolveShapes(cast, boxes, player, enemies) {
     this.hitboxes.push(...boxes.map((box) => ({ ...box, time: 0.24, cast })));
     const targets = this.targets(cast, player, enemies).filter((target) =>
-      !cast.hitTargets.has(target) && this.isInAnyHitbox(target, boxes));
+      !cast.hitTargets.has(target) && this.isInAnyHitbox(target, boxes) && !this.wallIntersection(cast.origin,target));
     targets.sort((a, b) => Math.hypot(a.x - cast.origin.x, a.y - cast.origin.y) -
       Math.hypot(b.x - cast.origin.x, b.y - cast.origin.y));
     for (const target of targets) {
@@ -268,7 +324,9 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
       if (cast.team === 'player') this.recordParticipant(target, cast.caster);
     }
     cast.caster.lastDamageBreakdown = { ...breakdown, finalDamage: damage };
-    this.damageNumbers.push({ x: target.x, y: target.y - 34, value: damage, life: 0.75,
+    const recent=this.damageNumbers.find(n=>n.target===target && n.team===cast.team && typeof n.value==='number' && n.life>.55);
+    if(recent){recent.value+=damage;recent.life=.75;}
+    else this.damageNumbers.push({ target,team:cast.team,x: target.x, y: target.y - 34, value: damage, life: 0.75,
       color: cast.team === 'enemy' ? '#ff9d9d' : this.effectColor(breakdown.type) });
     this.pushEffectText(target, breakdown.type);
     this.impacts.push({ x: target.x, y: target.y, move: cast.move, size: Math.max(36, target.radius * 2.2), age: 0, life: 0.3 });
@@ -349,7 +407,7 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
   effectColor(type) { return type === 0 ? '#d0d0d0' : type >= 2 ? '#ffde72' : type < 1 ? '#a9c7ff' : '#fff2a8'; }
   pushEffectText(target, type) {
     const value = type === 0 ? '효과가 없다' : type >= 2 ? '효과가 굉장했다' : type < 1 ? '효과가 별로다' : '';
-    if (value) this.damageNumbers.push({ x: target.x, y: target.y - 60, value, life: 0.9, color: this.effectColor(type) });
+    if (value && !this.damageNumbers.some(n=>n.target===target && n.value===value)) this.damageNumbers.push({ target,x: target.x, y: target.y - 60, value, life: 0.9, color: this.effectColor(type) });
   }
 
   drawEffects(ctx, camera) {
@@ -358,6 +416,7 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
     ctx.lineWidth = 1.5;
     for (const cast of this.telegraphs) {
       const color = cast.team === 'enemy' ? '#ff8e8e' : visuals.getMoveAnimation(cast.move).color;
+      if(cast.team==='enemy')this.drawHostileTell(ctx,camera,cast);
       if (cast.move.behavior === 'AREA_TARGET') {
         for (const box of cast.hitboxes) this.drawHitboxShape(ctx, camera, box, 'transparent', color + '90');
       }
@@ -370,8 +429,14 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
       }
     }
     for (const shot of this.projectiles) {
+      ctx.save();
+      ctx.globalAlpha=shot.cast.team==='enemy'?1:.72;
       const color = shot.cast.team === 'enemy' ? '#ff8e8e' : visuals.getMoveAnimation(shot.cast.move).color;
       const angle = Math.atan2(shot.direction.y, shot.direction.x);
+      if(shot.cast.team==='enemy') {
+        ctx.strokeStyle='#ff7777';ctx.lineWidth=2;ctx.beginPath();
+        ctx.arc(shot.x-camera.x,shot.y-camera.y,shot.radius+3,0,Math.PI*2);ctx.stroke();
+      }
       if (shot.landing) {
         ctx.setLineDash([5, 5]);
         this.drawHitboxShape(ctx, camera, shot.landing, 'transparent', color + '90');
@@ -386,6 +451,7 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
         visuals.draw(ctx, this.assets, shot.cast.move, shot.x - camera.x, shot.y - camera.y,
           shot.radius * 2, shot.age, angle + (shot.cast.move.visualSpin || 0) * shot.age);
       }
+      ctx.restore();
     }
     for (const swing of this.meleeSwings) {
       if (swing.resolved) continue;
@@ -419,6 +485,27 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
       ctx.fillStyle = num.color; ctx.strokeStyle = '#202020'; ctx.lineWidth = 3;
       ctx.strokeText(String(num.value), num.x - camera.x, num.y - camera.y);
       ctx.fillText(String(num.value), num.x - camera.x, num.y - camera.y);
+    }
+    ctx.restore();
+  }
+
+  drawHostileTell(ctx,camera,cast) {
+    ctx.save();
+    ctx.strokeStyle='#ff9292';ctx.lineWidth=2;
+    const progress=Math.max(0,Math.min(1,1-cast.timer/cast.windup));
+    const x=cast.origin.x-camera.x,y=cast.origin.y-camera.y;
+    ctx.beginPath();ctx.arc(x,y,cast.caster.radius+7,-Math.PI/2,-Math.PI/2+Math.PI*2*progress);ctx.stroke();
+    if(cast.move.behavior==='AREA_TARGET') {
+      for(const box of cast.hitboxes) {
+        ctx.beginPath();ctx.arc(box.x-camera.x,box.y-camera.y,box.radius*progress,0,Math.PI*2);ctx.stroke();
+      }
+    } else {
+      const distance=cast.move.range,end=this.wallIntersection(cast.origin,{x:cast.origin.x+cast.direction.x*distance,y:cast.origin.y+cast.direction.y*distance})
+        || {x:cast.origin.x+cast.direction.x*distance,y:cast.origin.y+cast.direction.y*distance};
+      const ex=end.x-camera.x,ey=end.y-camera.y;
+      ctx.setLineDash(cast.charge?[10,5]:[3,7]);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(ex,ey);ctx.stroke();ctx.setLineDash([]);
+      ctx.beginPath();ctx.moveTo(ex-cast.direction.x*10-cast.direction.y*7,ey-cast.direction.y*10+cast.direction.x*7);
+      ctx.lineTo(ex,ey);ctx.lineTo(ex-cast.direction.x*10+cast.direction.y*7,ey-cast.direction.y*10-cast.direction.x*7);ctx.stroke();
     }
     ctx.restore();
   }

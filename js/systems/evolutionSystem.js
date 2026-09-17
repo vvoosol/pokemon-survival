@@ -3,7 +3,7 @@ window.SurvivorRPG = window.SurvivorRPG || {};
 window.SurvivorRPG.EvolutionSystem = {
   megaOptions(speciesId) {
     const R = window.SurvivorRPG, species = R.PokemonData[speciesId];
-    if (!species || species.evolutions?.length) return [];
+    if (!species || species.evolutions?.length || species.unavailableEvolutions?.length) return [];
     const originals = Object.values(R.MegaForms || {}).filter(form => form.speciesId === speciesId);
     if (originals.length) return originals;
     // Species without an Anil mega form keep their original art and gain a one-time stat boost.

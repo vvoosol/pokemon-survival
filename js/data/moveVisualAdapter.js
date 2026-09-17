@@ -22,7 +22,13 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     bite: ['PRAS- Bite.png', [0, 1, 2], [0, 1, 2], '#ffe5dd'],
     bug: ['PRAS- Bug Bite.png', [0], [0], '#d2f38a'],
     energy: ['PRAS- Energy Ball.png', [0], [0], '#b7ff83'],
-    sludge: ['PRAS- Sludge Bomb.png', [0], [0], '#de9cff']
+    sludge: ['PRAS- Sludge Bomb.png', [0], [0], '#de9cff'],
+    ice: ['PRAS- Ice.png', [7], [8,9,10,11], '#a2eaff'],
+    shadow: ['PRAS- Shadow Ball.png', [0], [0], '#c09be8'],
+    dragon: ['PRAS- Dragon Pulse.png', [0], [0], '#b99aff'],
+    dark: ['PRAS- Dark Pulse.png', [0], [0], '#bc99d1'],
+    fairy: ['PRAS- Fairy Wind.png', [0], [0], '#ffb8dd'],
+    steel: ['PRAS- Flash Cannon.png', [0], [0], '#d6edf5']
   };
   const bySource = {
     TACKLE: 'impact', SCRATCH: 'scratch', WATERPULSE: 'waterPulse', QUICKATTACK: 'impact', BITE: 'bite', HYPERFANG: 'bite', BUGBITE: 'bug',
@@ -33,11 +39,13 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     ELECTROBALL: 'electric', THUNDERBOLT: 'electric', SPARK: 'electric',
     ROCKTHROW: 'rock', MAGNITUDE: 'rock', BULLDOZE: 'mud', MUDSHOT: 'mud',
     CONFUSION: 'psychic', PSYBEAM: 'psychic', PSYCHIC: 'psychic',
-    ENERGYBALL: 'energy', SLUDGEBOMB: 'sludge', SOLARBEAM: 'energy'
+    ENERGYBALL: 'energy', SLUDGEBOMB: 'sludge', SOLARBEAM: 'energy',
+    ICEBEAM:'ice', BLIZZARD:'ice', SHADOWBALL:'shadow', DRAGONPULSE:'dragon',
+    DARKPULSE:'dark', FLASHCANNON:'steel', MAGICALLEAF:'leaf'
   };
   const byType = { fire: 'fire', water: 'water', grass: 'leaf', electric: 'electric',
-    poison: 'poison', psychic: 'psychic', ghost: 'psychic', flying: 'gust',
-    bug: 'bug', rock: 'rock', ground: 'mud', dark: 'bite' };
+    poison: 'poison', psychic: 'psychic', ghost: 'shadow', flying: 'gust',
+    bug: 'bug', rock: 'rock', ground: 'mud', dark: 'dark', ice:'ice', dragon:'dragon', fairy:'fairy', steel:'steel' };
 
   window.SurvivorRPG.MoveVisualAdapter = {
     sheets,

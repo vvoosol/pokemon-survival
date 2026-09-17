@@ -150,7 +150,26 @@ Their stats, level evolution thresholds and implemented damaging learnset entrie
 come from `PBS/pokemon.txt`; unsupported original moves are not fabricated.
 Double/Triple Battle shop entries reuse the existing original Poke Ball item icon.
 
-Do not add external image assets. Any new visual asset must come from:
+Do not add external image assets. New visual assets must come from the Anil archive listed below.
+
+The generation expansion is reproducibly imported by `tools/import-battle-rewards.cjs`.
+The 60 selected species in `tools/expansion-roster.cjs` use unchanged original
+`Graphics/Characters/Followers/{SPECIES}.png`, `Graphics/Pokemon/Icons/{SPECIES}.png`
+and `Graphics/Pokemon/Front/{SPECIES}.png`. `PBS/pokemon.txt` supplies stats, types,
+growth, catch/EXP yields, abilities, level moves, TutorMoves and evolution targets.
+`PBS/items.txt` with `FieldUse = TM` restricts the hero reward pool to actual TMs.
+`PBS/moves.txt` supplies the 42 added damaging TM moves' power/type/category.
+Realtime timing, hit shapes and fallback Tackle are game adaptations, not native battle scripts.
+
+Native Mega stats/types come from `PBS/pokemon_forms.txt` sections with MegaStone;
+their unchanged `{SPECIES}_{FORM}.png` front strips are copied to `assets/pokemon-front/`.
+No replacement art is generated for species without a source Mega form.
+Additional original animation sheets copied from `Graphics/Animations/` are
+`PRAS- Ice.png`, `PRAS- Shadow Ball.png`, `PRAS- Dragon Pulse.png`,
+`PRAS- Dark Pulse.png`, `PRAS- Fairy Wind.png` and `PRAS- Flash Cannon.png`.
+Exact move sheets are used when mapped; other moves reuse original same-type effects.
+
+Original archive:
 
 `C:\Users\User\Downloads\POKEMON ANIL V4.13.zip`
 

@@ -20,8 +20,14 @@ window.SurvivorRPG.WildPokemon = class WildPokemon extends window.SurvivorRPG.En
       .filter((moveId, index, list) => list.indexOf(moveId) === index)
       .slice(-2);
     if (!this.equippedMoves.length) this.equippedMoves = [data.wildMove || "wildBite"];
+    const moves=this.equippedMoves.map(id=>window.SurvivorRPG.MoveData[id]);
+    this.aiType=data.aiType || (moves.some(m=>m.behavior==='AREA_TARGET')?'artillery'
+      : ['rattata','raticate','heracross','tauros','machop','machoke','machamp','bagon','shelgon'].includes(data.id)?'charger'
+      : moves.some(m=>['PROJECTILE','MULTI_PROJECTILE','BEAM'].includes(m.behavior))?'ranged':'chaser');
+    this.recovery=0;
     this.attackRange = Math.max(this.attackRange, ...this.equippedMoves.map((id) =>
       Math.min(this.aggroRadius * 0.8, (window.SurvivorRPG.MoveData[id]?.range || 48) * 0.8)));
+    if(this.aiType==='charger')this.attackRange=165;
     this.state = "idle";
     this.roamTimer = 0.5 + Math.random() * 1.8;
     this.roamVector = { x: 0, y: 0 };
@@ -45,6 +51,7 @@ window.SurvivorRPG.WildPokemon = class WildPokemon extends window.SurvivorRPG.En
     const dy = player.y - this.y;
     const distance = Math.hypot(dx, dy);
     this.attackCooldown = Math.max(0, this.attackCooldown - dt);
+    this.recovery=Math.max(0,this.recovery-dt);
 
     if (distance <= this.aggroRadius) {
       if (this.state !== "aggro" && this.state !== "attack") {
@@ -59,19 +66,22 @@ window.SurvivorRPG.WildPokemon = class WildPokemon extends window.SurvivorRPG.En
       this.vx = 0;
       this.vy = 0;
       this.windup = Math.max(0, this.windup - dt);
+    } else if(this.recovery>0) {
+      this.vx=this.vy=0;
     } else if (this.state === "aggro") {
       movementSystem.moveToward(this, player.x, player.y, dt, world);
       this.windup = 0;
     } else if (this.state === "attack") {
       this.vx = 0;
       this.vy = 0;
+      if(['ranged','artillery'].includes(this.aiType) && distance<this.attackRange*0.6 && this.attackCooldown>0) {
+        movementSystem.moveToward(this,this.x-dx,this.y-dy,dt,world,0.65);
+      }
       if (this.attackCooldown <= 0 && this.windup <= 0) {
         this.windup = combatSystem.enemyAttack(this, player) || 0.6;
         this.attackCooldown = this.data.attackCooldown + this.windup;
       }
-      if (this.windup > 0) {
-        this.windup -= dt;
-      }
+      if (this.windup > 0) this.windup -= dt;
     } else {
       this.roam(dt, movementSystem, world);
     }

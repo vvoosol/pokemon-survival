@@ -64,6 +64,7 @@ window.SurvivorRPG.Game = class Game {
   async init() {
     await Promise.all([
       this.assets.loadImage("tileset", this.map.tileset),
+      this.assets.loadImage("caveTiles", "assets/tilesets/cave.png"),
       this.assets.loadImage("trainer", "assets/trainer/trainer.png"),
       this.assets.loadImage("pokeball", window.SurvivorRPG.BallData.pokeBall.sprite),
       this.assets.loadImage("typesMini", "assets/ui/types-mini.png"),
@@ -176,6 +177,7 @@ window.SurvivorRPG.Game = class Game {
     if (!nextMap) return false;
     this.partyBattle.clear();
     this.map = nextMap;
+    this.combatSystem.world = nextMap;
     this.currentMapId = mapId;
     this.currentHuntingArea = mapId === "hub" ? null : mapId;
     this.survival = mapId === "survival" ? new window.SurvivorRPG.SurvivalSystem() : null;
@@ -268,6 +270,13 @@ window.SurvivorRPG.Game = class Game {
 
     if (this.mode === "moveLearn") {
       this.ui.navigateChoices(this.input.movementVector(), dt);
+      if(this.input.consumeBall()) {
+        if(this.currentMoveLearn?.confirmForgetIndex !== null) {
+          this.currentMoveLearn.confirmForgetIndex=null;
+          this.ui.showMoveLearning(this.currentMoveLearn,index=>this.selectMoveLearnChoice(index));
+        } else this.selectMoveLearnChoice(4);
+        return;
+      }
       if (this.input.consumeSwitch()) {
         this.ui.activateChoice();
         return;
@@ -703,7 +712,7 @@ window.SurvivorRPG.Game = class Game {
       id: speciesData.id,
       name: overrides.name || speciesData.name,
       level,
-      currentHp: overrides.currentHp ?? speciesData.hp,
+      currentHp: overrides.currentHp ?? nativeStats.maxHp,
       nativeStats,
       equippedMoves,
       moveUpgradeLevels: overrides.moveUpgradeLevels || Object.fromEntries(equippedMoves.map((move) => [typeof move === "string" ? move : move.moveId, typeof move === "string" ? 0 : move.upgradeLevel || 0])),
@@ -718,7 +727,10 @@ window.SurvivorRPG.Game = class Game {
     };
     const pokemon = new window.SurvivorRPG.PlayerPokemon(data, x, y);
     this.statSystem.recalculateStats(pokemon);
-    if (overrides.megaFormId) window.SurvivorRPG.EvolutionSystem.applyMega(pokemon, overrides.megaFormId, this.statSystem);
+    if (overrides.megaFormId) {
+      window.SurvivorRPG.EvolutionSystem.applyMega(pokemon, overrides.megaFormId, this.statSystem);
+      if (overrides.currentHp !== undefined) pokemon.hp = Math.max(0, Math.min(pokemon.maxHp, overrides.currentHp));
+    }
     return pokemon;
   }
 
@@ -1205,6 +1217,8 @@ window.SurvivorRPG.Game = class Game {
     this.pokedex = data.pokedex || {};
     this.trainer.x = data.trainer?.x || this.trainer.x;
     this.trainer.y = data.trainer?.y || this.trainer.y;
+    const safe=window.SurvivorRPG.MovementSystem.safePosition(this.map,this.trainer.x,this.trainer.y,this.trainer.radius) || this.map.playerStart;
+    this.trainer.x=safe.x;this.trainer.y=safe.y;
     this.trainer.direction = data.trainer?.direction || "down";
     this.camera.follow(this.trainer, 1);
     this.message("리포트를 불러왔다.", 1.8);
@@ -1309,6 +1323,7 @@ window.SurvivorRPG.Game = class Game {
     pokemon.radius = newSpecies.radius || pokemon.radius;
     pokemon.movementSpeed = newSpecies.movementSpeed || pokemon.movementSpeed;
     pokemon.evolutionData = { from: oldSpecies.id, to: newSpecies.id, reason, level: pokemon.level };
+    this.markPokedex(newSpecies.id, 'caught');
     pokemon.nativeStats = this.statSystem.calculateNativeStats(newSpecies, pokemon.level);
     this.statSystem.recalculateStats(pokemon);
     if (!pokemon.dead && !pokemon.fainted) {
@@ -1342,9 +1357,10 @@ window.SurvivorRPG.Game = class Game {
     this.ctx.clearRect(0, 0, this.width, this.height);
     this.drawMap();
     if (this.debug) this.drawDebugZones();
-    this.drawNpcs();
 
     const drawables = [];
+    drawables.push(...(this.map.objects || []).map(object => ({ scenery:object, y:object.y+object.height-12 })));
+    drawables.push(...this.map.npcs.map(npc => ({ npc, y:npc.y })));
     if (this.mode === "trainer" || this.mode === "transition") drawables.push(this.trainer);
     if (this.mode === "pokemon" || (this.mode === "transition" && this.player.inField)) drawables.push(this.player);
     if (this.mode !== "trainer") drawables.push(...this.partyBattle.members.filter((pokemon) => pokemon !== this.player));
@@ -1352,6 +1368,8 @@ window.SurvivorRPG.Game = class Game {
     drawables.sort((a, b) => a.y - b.y);
 
     drawables.forEach((entity) => {
+      if(entity.scenery) { this.drawScenery(entity.scenery); return; }
+      if(entity.npc) { this.drawNpcs([entity.npc]); return; }
       this.drawShadow(entity);
       entity.draw(this.ctx, this.camera, this.assets, this.combatSystem.poseFor(entity));
       if (entity !== this.trainer) {
@@ -1373,7 +1391,7 @@ window.SurvivorRPG.Game = class Game {
 
   drawMap() {
     const ctx = this.ctx;
-    const tileset = this.assets.image("tileset");
+    const tileset = this.assets.image(this.map.biome === 'cave' ? 'caveTiles' : 'tileset');
     const tileSize = this.map.tileSize;
     const startX = Math.floor(this.camera.x / tileSize) - 1;
     const endX = Math.ceil((this.camera.x + this.width) / tileSize) + 1;
@@ -1393,24 +1411,29 @@ window.SurvivorRPG.Game = class Game {
   }
 
   baseTileFor(tx, ty) {
+    if(this.map.biome === 'cave')return {sx:(Math.abs(tx+ty)%3)*32,sy:0,sw:32,sh:32};
     const n = Math.abs(Math.sin(tx * 12.9898 + ty * 78.233) * 43758.5453) % 1;
     return n > 0.58 ? this.map.tileSources.grassB : this.map.tileSources.grassA;
   }
 
   drawPath(tileset) {
+    if(this.map.biome === 'cave')return;
     const path = this.map.tileSources.path;
     const paths = this.map.paths || [];
     paths.forEach((area) => {
       for (let y = area.y; y < area.y + area.height; y += 32) {
         for (let x = area.x; x < area.x + area.width; x += 32) {
-          this.drawTile(tileset, path, x - this.camera.x, y - this.camera.y);
+          const edgeX=x===area.x?0:x+32>=area.x+area.width?64:32;
+          const edgeY=y===area.y?128:y+32>=area.y+area.height?192:160;
+          this.drawTile(tileset, {...path,sx:edgeX,sy:edgeY}, x - this.camera.x, y - this.camera.y);
         }
       }
     });
   }
 
   drawGrassPatch(tileset, patch) {
-    const source = this.map.tileSources.darkGrass;
+    if(this.map.biome === 'cave')return;
+    const source = {sx:128,sy:96,sw:32,sh:32};
     const step = this.map.tileSize;
     for (let y = patch.y; y < patch.y + patch.height; y += step) {
       for (let x = patch.x; x < patch.x + patch.width; x += step) {
@@ -1429,8 +1452,14 @@ window.SurvivorRPG.Game = class Game {
     this.ctx.drawImage(tileset, source.sx, source.sy, source.sw, source.sh, Math.round(dx), Math.round(dy), 32, 32);
   }
 
-  drawNpcs() {
-    const npcs = this.map.npcs || [];
+  drawScenery(object) {
+    const source=window.SurvivorRPG.WorldArt[object.art];
+    const x=Math.round(object.x-this.camera.x),y=Math.round(object.y-this.camera.y);
+    if(x+object.width<0||y+object.height<0||x>this.width||y>this.height)return;
+    this.ctx.drawImage(this.assets.image(source.atlas || 'tileset'),source.sx,source.sy,source.sw,source.sh,x,y,object.width,object.height);
+  }
+
+  drawNpcs(npcs = this.map.npcs || []) {
     const ctx = this.ctx;
     npcs.forEach((npc) => {
       const sprite = window.SurvivorRPG.NpcSprites[npc.type];

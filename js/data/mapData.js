@@ -81,6 +81,16 @@ window.SurvivorRPG = window.SurvivorRPG || {};
       zone("h2_rock_c", 490, 880, 460, 300, [15, 19], "NORMAL", [["geodude", 40], ["graveler", 12], ["machop", 24]]),
       zone("h2_rare_d", 1160, 900, 430, 310, [17, 20], "ELITE", [["kadabra", 12], ["pikachu", 18], ["poliwhirl", 18], ["vulpix", 18]])
     ]),
+    hunting_04: huntingMap("hunting_04", "Lv.31~40 진화의 숲", [31, 40], [
+      zone("h4_grass",430,300,470,280,[31,35],"NORMAL",[["venusaur",12],["pidgeot",12]]),
+      zone("h4_water",1030,300,470,280,[34,38],"NORMAL",[["blastoise",12],["poliwrath",12]]),
+      zone("h4_rock",490,880,460,300,[36,40],"ELITE",[["charizard",10],["golem",10]])
+    ]),
+    hunting_05: huntingMap("hunting_05", "Lv.41~50 최종 진화 지대", [41, 50], [
+      zone("h5_grass",430,300,470,280,[41,45],"NORMAL",[["venusaur",12],["alakazam",12]]),
+      zone("h5_water",1030,300,470,280,[44,48],"NORMAL",[["blastoise",12],["poliwrath",12]]),
+      zone("h5_rock",490,880,460,300,[48,50],"ELITE",[["charizard",10],["machamp",10]])
+    ]),
     hunting_03: huntingMap("hunting_03", "Lv.21~30 고급 사냥터", [21, 30], [
       zone("h3_grass_a", 420, 300, 480, 280, [21, 24], "NORMAL", [["ivysaur", 18], ["pidgeotto", 26], ["raticate", 24], ["gloom", 22]]),
       zone("h3_water_b", 1030, 300, 480, 280, [23, 27], "NORMAL", [["poliwhirl", 34], ["poliwrath", 8], ["gloom", 18]]),
@@ -133,12 +143,24 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     };
   }
 
+  // Add the imported roster by encounter level without speeding up the spawn clocks.
+  for (const species of Object.values(window.SurvivorRPG.PokemonData)) {
+    if (![2,3].includes(species.generation)) continue;
+    const tier = Math.max(1,Math.min(5,Math.ceil(species.level / 10)));
+    const map = maps['hunting_0' + tier];
+    const eligible = map.spawnZones.filter(zone => zone.levelMax >= species.level);
+    const affinity = species.types.includes('water') ? 'water' : species.types.some(t => ['rock','ground','steel'].includes(t)) ? 'rock' : 'grass';
+    const target = eligible.find(zone => zone.id.includes(affinity)) || eligible.at(-1);
+    target.spawnTable.push({speciesId:species.id,pokemon:species.id,weight:species.evolutions.length ? 12 : 7,minLevel:species.level});
+  }
   window.SurvivorRPG.Maps = maps;
   window.SurvivorRPG.HuntingAreas = [
     { id: "survival", name: "15분 서바이벌", recommendedLevelMin: 5, recommendedLevelMax: 50, mapId: "survival" },
     { id: "hunting_01", name: "초보 초원", recommendedLevelMin: 1, recommendedLevelMax: 10, mapId: "hunting_01" },
     { id: "hunting_02", name: "깊은 길", recommendedLevelMin: 11, recommendedLevelMax: 20, mapId: "hunting_02" },
-    { id: "hunting_03", name: "고급 사냥터", recommendedLevelMin: 21, recommendedLevelMax: 30, mapId: "hunting_03" }
+    { id: "hunting_03", name: "고급 사냥터", recommendedLevelMin: 21, recommendedLevelMax: 30, mapId: "hunting_03" },
+    { id: "hunting_04", name: "진화의 숲", recommendedLevelMin: 31, recommendedLevelMax: 40, mapId: "hunting_04" },
+    { id: "hunting_05", name: "최종 진화 지대", recommendedLevelMin: 41, recommendedLevelMax: 50, mapId: "hunting_05" }
   ];
   window.SurvivorRPG.MapData = maps.hub;
 })();
