@@ -10,7 +10,8 @@ window.SurvivorRPG.Game = class Game {
     this.map = this.maps.hub;
     this.assets = new window.SurvivorRPG.AssetManager();
     this.input = new window.SurvivorRPG.InputManager(document.getElementById("gameRoot"));
-    this.camera = new window.SurvivorRPG.Camera(this.width, this.height, this.map);
+    this.worldZoom = 1.5;
+    this.camera = new window.SurvivorRPG.Camera(this.width / this.worldZoom, this.height / this.worldZoom, this.map);
     this.statSystem = new window.SurvivorRPG.StatSystem();
     this.movementSystem = new window.SurvivorRPG.MovementSystem();
     this.combatSystem = new window.SurvivorRPG.CombatSystem(this.statSystem, this.assets);
@@ -29,7 +30,11 @@ window.SurvivorRPG.Game = class Game {
     this.partyPokemon = [];
     this.reservePokemon = [];
     this.balls = { pokeBall: 10 };
-    this.money = 10000;
+    this.money = 150;
+    this.journal=window.SurvivorRPG.SaveStore.readJournal();
+    this.runStats={defeats:0,earned:0,caught:[],damage:{},rewards:[]};
+    this.autosaveTimer=0;
+    this.suspended=false;
     this.items = { potion: 0, expShare: false, expShareEnabled: false };
     this.currentMapId = "hub";
     this.currentHuntingArea = null;
@@ -86,10 +91,16 @@ window.SurvivorRPG.Game = class Game {
     this.assets.loadSound("uiBuy", "assets/audio/ui-buy.ogg");
     this.combatSystem.onLevelUp = (event) => this.enqueueLevelUp(event);
     this.combatSystem.onEnemyDefeated = (enemy) => this.awardParticipantExp(enemy);
-    this.reset();
+    this.combatSystem.onDamage=(cast,target,damage)=>{
+      if(cast.team!=='player')return;
+      const key=cast.caster.uniqueId;
+      this.runStats.damage[key]=(this.runStats.damage[key] || 0)+damage;
+      if(this.survival)this.survival.stats.damage[key]=(this.survival.stats.damage[key] || 0)+damage;
+    };
+    if(this.journal.awaitingStarter)this.beginStarterJourney();else this.reset();
   }
 
-  reset() {
+  reset({starterPending=false}={}) {
     this.awaitingStarter = false;
     this.menuOpen = false;
     this.menuView = "main";
@@ -131,20 +142,21 @@ window.SurvivorRPG.Game = class Game {
     this.partyPokemon = [starter];
     this.reservePokemon = [];
     this.balls = { pokeBall: 10 };
-    this.money = 10000;
+    this.money = 150;
+    this.runStats={defeats:0,earned:0,caught:[],damage:{},rewards:[]};
     this.items = { potion: 0, expShare: false, expShareEnabled: false, doubleBattle: false, tripleBattle: false };
     this.currentMapId = "hub";
     this.currentHuntingArea = null;
     this.nearbyNpc = null;
     this.currentBagUse = null;
-    this.pokedex = {};
-    this.markPokedex("bulbasaur", "caught");
+    this.pokedex = JSON.parse(JSON.stringify(this.journal.dex));
+    if(!starterPending&&!this.pokedex.bulbasaur?.caught)this.markPokedex("bulbasaur", "caught");
     this.enemies = [];
     this.spawnSystem.zones.forEach((zone) => {
       zone.timer = 0;
     });
-    this.camera.x = this.trainer.x - this.width / 2;
-    this.camera.y = this.trainer.y - this.height / 2;
+    this.camera.x = this.trainer.x - this.camera.width / 2;
+    this.camera.y = this.trainer.y - this.camera.height / 2;
     this.camera.clamp();
     this.combatSystem.damageNumbers = [];
     this.combatSystem.telegraphs = [];
@@ -178,6 +190,7 @@ window.SurvivorRPG.Game = class Game {
     this.partyBattle.clear();
     this.map = nextMap;
     this.combatSystem.world = nextMap;
+    this.assets.setMusic(mapId==='hub'?'hub':mapId==='survival'?'survival':nextMap.biome==='cave'?'cave':'field');
     this.currentMapId = mapId;
     this.currentHuntingArea = mapId === "hub" ? null : mapId;
     this.survival = mapId === "survival" ? new window.SurvivorRPG.SurvivalSystem() : null;
@@ -185,6 +198,8 @@ window.SurvivorRPG.Game = class Game {
     this.spawnSystem.setMap(nextMap);
     if (options.clearEnemies !== false) {
       this.enemies = [];
+      this.captureTarget=null;
+      this.captureSystem.lockedTarget=null;
       this.combatSystem.clear();
     }
     if (options.movePlayer !== false && this.trainer) {
@@ -197,8 +212,8 @@ window.SurvivorRPG.Game = class Game {
       this.player = this.selectedPokemon;
       if (this.player) this.player.inField = false;
       this.mode = "trainer";
-      this.camera.x = this.trainer.x - this.width / 2;
-      this.camera.y = this.trainer.y - this.height / 2;
+      this.camera.x = this.trainer.x - this.camera.width / 2;
+      this.camera.y = this.trainer.y - this.camera.height / 2;
       this.camera.clamp();
     }
     return true;
@@ -219,6 +234,15 @@ window.SurvivorRPG.Game = class Game {
   }
 
   update(dt) {
+    if(this.suspended)return;
+    const crisis=this.mode==='pokemon' && (this.player.hp/this.player.maxHp<(this.musicCrisis ? 0.4 : 0.2));
+    this.musicCrisis=crisis;
+    this.assets.setMusic(this.survival?.status==='cleared'?'hub':crisis||this.survival?.elapsed>=840?'final'
+      :this.currentMapId==='hub'?'hub':this.survival?'survival':this.map.biome==='cave'?'cave':'field');
+    this.autosaveTimer+=dt;
+    if(this.autosaveTimer>=60 && ['trainer','pokemon'].includes(this.mode) && !this.menuOpen) {
+      this.autosaveTimer=0;this.saveGame(true);
+    }
     if (this.mode === "survivalClear") {
       if (this.input.consumeSwitch() || this.input.consumeBall()) this.travelToHub();
       return;
@@ -369,6 +393,8 @@ window.SurvivorRPG.Game = class Game {
 
   handlePartyAction() {
     if (this.mode === "trainer") {
+      const target=this.captureSystem.cycleTarget(this.trainer,this.enemies,this.captureTarget);
+      if(target){this.captureTarget=target;return;}
       this.selectNextAvailablePokemon();
       return;
     }
@@ -432,6 +458,7 @@ window.SurvivorRPG.Game = class Game {
       }
       this.healParty();
       this.survival.healReadyAt = this.survival.elapsed + 25;
+      this.saveGame(true);
       return;
     }
     if (this.mode === "pokemon") this.startRecall();
@@ -449,6 +476,7 @@ window.SurvivorRPG.Game = class Game {
     }
     if (npc.type === "HEALER") {
       this.healParty();
+      this.saveGame(true);
       return;
     }
     if (npc.type === "SHOP") {
@@ -478,12 +506,14 @@ window.SurvivorRPG.Game = class Game {
       this.startDeploy();
     }
     this.message(`${area.name}으로 이동했습니다.`, 1.8);
+    this.saveGame(true);
     return true;
   }
 
   travelToHub() {
     this.setMap("hub");
     this.message("허브로 돌아왔습니다.", 1.8);
+    this.saveGame(true);
     return true;
   }
 
@@ -656,15 +686,28 @@ window.SurvivorRPG.Game = class Game {
       this.markPokedex(target.id, "caught");
       this.addCapturedPokemon(target);
       const reward = this.moneyRewardFor(target);
+      const firstResearch=!this.journal.firstRewards[target.id];
       this.money += reward;
-      this.message(`${target.name}을(를) 잡았다! ${reward}원을 얻었다.`, 2.2);
+      this.runStats.earned+=reward;
+      this.runStats.caught.push(target.id);
+      if(target.survival&&this.survival){this.survival.stats.caught.push(target.id);this.survival.stats.earned+=reward;}
+      if(firstResearch) {
+        this.journal.firstRewards[target.id]=true;this.money+=100;this.runStats.earned+=100;
+        this.runStats.rewards.push(`${target.name} 첫 연구 +100원`);
+        if(target.survival&&this.survival)this.survival.stats.earned+=100;
+        window.SurvivorRPG.SaveStore.writeJournal(this.journal);
+      }
+      this.message(`${target.name} 포획! +${reward}원${firstResearch?' · 첫 연구 +100원':''}`, 2.8);
       this.enemies = this.enemies.filter((enemy) => enemy !== target);
     } else {
       target.setCaptureReady();
+      target.captureFailures=(target.captureFailures || 0)+1;
       this.message(`아깝다! ${target.name}이 몬스터볼에서 나왔다!`, 2.1);
     }
     this.captureTarget = this.captureSystem.nearestTarget(this.trainer, this.enemies);
     this.mode = "trainer";
+    this.saveGame(true);
+    if(result.success)this.grantEliteReward(target);
   }
 
   moneyRewardFor(target) {
@@ -735,6 +778,19 @@ window.SurvivorRPG.Game = class Game {
   }
 
   awardParticipantExp(enemy) {
+    const money=Math.max(5,Math.floor(enemy.level/2));
+    this.money+=money;
+    this.runStats.earned+=money;this.runStats.defeats++;
+    this.journal.defeats++;
+    if(this.journal.defeats>=5&&!this.journal.goals.first5) {
+      this.journal.goals.first5=true;this.money+=50;this.runStats.earned+=50;
+      if(enemy.survival&&this.survival)this.survival.stats.earned+=50;
+      this.runStats.rewards.push('첫 5마리 조사 +50원');
+      this.message('첫 5마리 조사 완료! 연구비 50원',2);
+    }
+    this.grantEliteReward(enemy);
+    window.SurvivorRPG.SaveStore.writeJournal(this.journal);
+    if(enemy.survival && this.survival)this.survival.stats.earned+=money;
     const survival = enemy.survival ? this.survival : null;
     if (survival) survival.kills += 1;
     const participantIds = enemy.participants ? [...enemy.participants] : [];
@@ -814,6 +870,7 @@ window.SurvivorRPG.Game = class Game {
       this.choiceLocked = false;
       this.ui.hideLevelChoices();
       this.ui.hideMoveLearning();
+      this.saveGame(true);
       return;
     }
     this.currentLevelEvent = event;
@@ -822,17 +879,31 @@ window.SurvivorRPG.Game = class Game {
 
   processLevelEvent(event) {
     const pokemon = event.pokemon || this.player;
+    if(event.rewardOnly) {this.continueLevelPipeline(event);return;}
     this.statSystem.applyNativeStatGrowth(pokemon);
     const newMoveId = this.nextMoveForLevel(pokemon, event.toLevel);
     if (newMoveId && this.queueMoveLearning(pokemon, newMoveId, event)) return;
     this.continueLevelPipeline(event);
   }
 
+  grantEliteReward(enemy) {
+    const id=enemy.survivalElite;
+    if(!id||!this.survival||this.survival.rewardedElites.includes(id))return;
+    this.survival.rewardedElites.push(id);
+    this.enqueueLevelUp({pokemon:this.activePokemon || this.selectedPokemon,toLevel:this.player.level,rewardOnly:true,
+      forcedRarity:id==='final'?'legendary':'hero'});
+    const label=id==='final'?'최종 정예: 전설 선택':'정예: 영웅 선택';
+    this.runStats.rewards.push(label);this.survival.stats.rewards.push(label);
+  }
+
   continueLevelPipeline(event) {
     const pokemon = event.pokemon || this.player;
     this.checkEvolution(event, pokemon);
     this.mode = "levelChoice";
+    this.menuOpen=false;
+    this.ui.hideGameMenu();
     this.currentLevelEvent = event;
+    if(event.forcedRarity)this.upgradeSystem.forceRarityNext=event.forcedRarity;
     this.currentChoices = this.upgradeSystem.createChoices(pokemon);
     this.choiceLocked = false;
     this.ui.showLevelChoices(event, this.currentChoices, (index) => this.selectLevelChoice(index));
@@ -848,6 +919,8 @@ window.SurvivorRPG.Game = class Game {
       return false;
     }
     this.mode = "moveLearn";
+    this.menuOpen=false;
+    this.ui.hideGameMenu();
     this.choiceLocked = false;
     this.currentMoveLearn = { pokemon, moveId, event, confirmForgetIndex: null };
     this.ui.showMoveLearning(this.currentMoveLearn, (index) => this.selectMoveLearnChoice(index));
@@ -1018,6 +1091,7 @@ window.SurvivorRPG.Game = class Game {
     }
     this.message(`${price}원을 사용했습니다.`, 1.4);
     this.ui.showGameMenu(this);
+    this.saveGame(true);
     return true;
   }
 
@@ -1056,11 +1130,13 @@ window.SurvivorRPG.Game = class Game {
       this.starterId = pokemon.uniqueId;
       this.selectedPartyIndex = 0;
       this.awaitingStarter = false;
+      this.journal.awaitingStarter = false;
       this.pendingStarter = null;
       this.markPokedex(id, 'caught');
       this.menuOpen = false;
       this.ui.hideGameMenu();
       this.message(`오박사에게 ${pokemon.name}을 받았다!`, 2.5);
+      this.saveGame(true);
       return true;
     }
     const old = this.ownedPokemon.find((pokemon) => pokemon.uniqueId === this.starterId);
@@ -1084,6 +1160,7 @@ window.SurvivorRPG.Game = class Game {
     this.pendingStarter = null;
     this.openMenuView('professor');
     this.message(`첫 파트너를 ${replacement.name}(으)로 변경했습니다.`, 2);
+    this.saveGame(true);
     return true;
   }
 
@@ -1093,6 +1170,22 @@ window.SurvivorRPG.Game = class Game {
     return true;
   }
 
+  receiveEmergencyBalls() {
+    if(!this.professorAvailable() || this.balls.pokeBall>0 || this.money>=50)return false;
+    this.balls.pokeBall=3;this.message('오박사가 몬스터볼 3개를 지원했다.',2);this.saveGame(true);
+    this.ui.showGameMenu(this);return true;
+  }
+
+  async importReport(file) {
+    if(!file)return false;
+    if(file.size>2000000){this.message('리포트 파일이 너무 큽니다.',2);return false;}
+    try {
+      const data=JSON.parse(await file.text());
+      if(!this.loadGame(data))return false;
+      this.saveGame(true);return true;
+    } catch {this.message('손상된 리포트입니다. 현재 진행은 유지됩니다.',2);return false;}
+  }
+
   restartAfterDefeat() {
     if (this.mode !== 'gameOver') return false;
     this.beginStarterJourney();
@@ -1100,19 +1193,22 @@ window.SurvivorRPG.Game = class Game {
   }
 
   beginStarterJourney() {
+    this.journal.awaitingStarter=true;
+    window.SurvivorRPG.SaveStore.writeJournal(this.journal);
     localStorage.removeItem('scientistRpgSave');
-    this.reset();
+    localStorage.removeItem('scientistRpgSave.backup');
+    this.reset({starterPending:true});
     this.awaitingStarter = true;
     this.ownedPokemon = [];
     this.partyPokemon = [];
     this.reservePokemon = [];
     this.starterId = null;
-    this.pokedex = {};
+    this.pokedex = JSON.parse(JSON.stringify(this.journal.dex));
     this.trainer.x = 800; this.trainer.y = 730;
     this.camera.follow(this.trainer, 1);
     this.menuOpen = true;
     this.openMenuView('starterSelect');
-    this.message('새 모험을 시작합니다. 첫 파트너를 선택하세요.', 2);
+    this.message('도감 기록은 보존했습니다. 새 파트너를 선택하세요.', 2);
   }
 
   startBagUse(itemId) {
@@ -1160,14 +1256,19 @@ window.SurvivorRPG.Game = class Game {
       entry.count += 1;
     }
     this.pokedex[speciesId] = entry;
+    if(this.journal) {
+      const old=this.journal.dex[speciesId] || {};
+      this.journal.dex[speciesId]={seen:true,caught:old.caught||entry.caught,count:Math.max(old.count||0,entry.count||0)};
+    }
   }
 
-  saveGame() {
+  serializeRun() {
     if (this.awaitingStarter) return false;
+    const actor=this.activePokemon || this.trainer;
     const data = {
       version: this.saveVersion,
       savedAt: Date.now(),
-      trainer: { x: this.trainer.x, y: this.trainer.y, direction: this.trainer.direction },
+      trainer: { x: actor.x, y: actor.y, direction: actor.direction },
       currentMapId: this.currentMapId,
       currentHuntingArea: this.currentHuntingArea,
       starterId: this.starterId,
@@ -1182,18 +1283,30 @@ window.SurvivorRPG.Game = class Game {
       reserveIds: this.reservePokemon.map((pokemon) => pokemon.uniqueId),
       selectedId: this.selectedPokemon?.uniqueId || null
     };
-    localStorage.setItem("scientistRpgSave", JSON.stringify(data));
-    this.message("리포트를 작성했다.", 1.8);
-    this.ui.showGameMenu(this);
+    data.runStats=this.runStats;
+    return data;
   }
 
-  loadGame() {
-    const raw = localStorage.getItem("scientistRpgSave");
-    if (!raw) {
-      this.message("저장된 리포트가 없습니다.", 1.5);
+  saveGame(quiet=false) {
+    if(this.awaitingStarter || !this.ownedPokemon.length)return false;
+    // Never checkpoint halfway through a growth choice: its reward is not committed yet.
+    if(['levelChoice','moveLearn','transition'].includes(this.mode)||this.levelUpQueue.length)return false;
+    try {
+      window.SurvivorRPG.SaveStore.write(this.serializeRun());
+      window.SurvivorRPG.SaveStore.writeJournal(this.journal);
+      if(!quiet){this.message('리포트를 작성했다.',1.8);this.ui.showGameMenu(this);}
+      return true;
+    } catch {this.message('저장하지 못했습니다. 리포트 내보내기로 보관해 주세요.',2);return false;}
+  }
+
+  loadGame(imported=null) {
+    let report;
+    try {report=imported?{data:window.SurvivorRPG.SaveStore.validate(imported)}:window.SurvivorRPG.SaveStore.read();}catch{}
+    if (!report) {
+      this.message("불러올 수 있는 리포트가 없습니다. 현재 진행은 유지됩니다.", 2);
       return false;
     }
-    const data = JSON.parse(raw);
+    const data = report.data;
     const restored = data.ownedPokemon.map((saved) => this.deserializePokemon(saved));
     const byId = new Map(restored.map((pokemon) => [pokemon.uniqueId, pokemon]));
     this.ownedPokemon = restored;
@@ -1203,6 +1316,11 @@ window.SurvivorRPG.Game = class Game {
     this.selectedPartyIndex = Math.max(0, this.partyPokemon.findIndex((pokemon) => pokemon.uniqueId === this.selectedPokemon.uniqueId));
     this.player = this.selectedPokemon;
     this.activePokemon = null;
+    this.awaitingStarter=false;
+    this.journal.awaitingStarter=false;
+    this.levelUpQueue=[];this.currentLevelEvent=null;this.currentMoveLearn=null;
+    this.currentChoices=[];this.choiceLocked=false;this.transition=null;
+    this.ui.hideLevelChoices();this.ui.hideMoveLearning();
     this.mode = "trainer";
     this.setMap(data.currentMapId || "hub", { clearEnemies: true, movePlayer: false });
     if (this.survival && data.survival) this.survival = new window.SurvivorRPG.SurvivalSystem(data.survival);
@@ -1214,15 +1332,16 @@ window.SurvivorRPG.Game = class Game {
     this.battleFormation = data.battleFormation === "triple" && this.items.tripleBattle ? "triple"
       : data.battleFormation === "double" && this.items.doubleBattle ? "double" : "single";
     if (this.items.expShare && data.items?.expShareEnabled === undefined) this.items.expShareEnabled = true;
-    this.pokedex = data.pokedex || {};
+    this.pokedex = {...this.journal.dex,...(data.pokedex || {})};
+    this.runStats=data.runStats || {defeats:0,earned:0,caught:[],damage:{},rewards:[]};
     this.trainer.x = data.trainer?.x || this.trainer.x;
     this.trainer.y = data.trainer?.y || this.trainer.y;
     const safe=window.SurvivorRPG.MovementSystem.safePosition(this.map,this.trainer.x,this.trainer.y,this.trainer.radius) || this.map.playerStart;
     this.trainer.x=safe.x;this.trainer.y=safe.y;
     this.trainer.direction = data.trainer?.direction || "down";
     this.camera.follow(this.trainer, 1);
-    this.message("리포트를 불러왔다.", 1.8);
-    this.ui.showGameMenu(this);
+    this.message(report.recovered?'백업 리포트로 복구했습니다.':'리포트를 불러왔다.', 1.8);
+    if(this.menuOpen)this.ui.showGameMenu(this);else this.ui.hideGameMenu();
     return true;
   }
 
@@ -1355,6 +1474,8 @@ window.SurvivorRPG.Game = class Game {
 
   draw() {
     this.ctx.clearRect(0, 0, this.width, this.height);
+    this.ctx.save();
+    this.ctx.scale(this.worldZoom,this.worldZoom);
     this.drawMap();
     if (this.debug) this.drawDebugZones();
 
@@ -1387,6 +1508,7 @@ window.SurvivorRPG.Game = class Game {
     this.drawTransitionEffects();
     this.drawEvolutionFlash();
     this.drawSwitchFlash();
+    this.ctx.restore();
   }
 
   drawMap() {
@@ -1394,9 +1516,9 @@ window.SurvivorRPG.Game = class Game {
     const tileset = this.assets.image(this.map.biome === 'cave' ? 'caveTiles' : 'tileset');
     const tileSize = this.map.tileSize;
     const startX = Math.floor(this.camera.x / tileSize) - 1;
-    const endX = Math.ceil((this.camera.x + this.width) / tileSize) + 1;
+    const endX = Math.ceil((this.camera.x + this.camera.width) / tileSize) + 1;
     const startY = Math.floor(this.camera.y / tileSize) - 1;
-    const endY = Math.ceil((this.camera.y + this.height) / tileSize) + 1;
+    const endY = Math.ceil((this.camera.y + this.camera.height) / tileSize) + 1;
 
     for (let ty = startY; ty < endY; ty += 1) {
       for (let tx = startX; tx < endX; tx += 1) {
@@ -1433,10 +1555,11 @@ window.SurvivorRPG.Game = class Game {
 
   drawGrassPatch(tileset, patch) {
     if(this.map.biome === 'cave')return;
-    const source = {sx:128,sy:96,sw:32,sh:32};
+    const source = {sx:128,sy:0,sw:32,sh:32};
     const step = this.map.tileSize;
     for (let y = patch.y; y < patch.y + patch.height; y += step) {
       for (let x = patch.x; x < patch.x + patch.width; x += step) {
+        if(this.map.paths.some(path=>x+16>=path.x&&x+16<path.x+path.width&&y+16>=path.y&&y+16<path.y+path.height))continue;
         this.drawTile(tileset, source, x - this.camera.x, y - this.camera.y);
       }
     }
@@ -1604,6 +1727,11 @@ window.SurvivorRPG.Game = class Game {
     this.ctx.beginPath();
     this.ctx.ellipse(x, y, target.radius * 1.35, target.radius * 0.5, 0, 0, Math.PI * 2);
     this.ctx.stroke();
+    this.ctx.font='bold 19px FusionPokemon, Segoe UI, Arial';
+    this.ctx.textAlign='center';this.ctx.strokeStyle='#202020';this.ctx.lineWidth=3;this.ctx.fillStyle='#fff7a8';
+    const chance=Math.round(this.captureSystem.calculateCaptureChance(target,window.SurvivorRPG.BallData.pokeBall)*100);
+    const label=`${this.captureSystem.lockedTarget===target?'고정 · ':''}포획 ${chance}%`;
+    this.ctx.strokeText(label,x,y+26);this.ctx.fillText(label,x,y+26);
     this.ctx.restore();
   }
 

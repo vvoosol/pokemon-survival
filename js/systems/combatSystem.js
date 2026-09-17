@@ -321,6 +321,7 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
     const damage = breakdown.finalDamage <= 0 ? 0 : Math.max(1, Math.floor(breakdown.finalDamage * cast.multiplier));
     if (damage > 0) {
       target.takeDamage(damage, cast.direction.x * 12, cast.direction.y * 12);
+      this.onDamage?.(cast,target,damage);
       if (cast.team === 'player') this.recordParticipant(target, cast.caster);
     }
     cast.caster.lastDamageBreakdown = { ...breakdown, finalDamage: damage };
@@ -430,7 +431,7 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
     }
     for (const shot of this.projectiles) {
       ctx.save();
-      ctx.globalAlpha=shot.cast.team==='enemy'?1:.72;
+      ctx.globalAlpha=shot.cast.team==='enemy'?1:(this.assets.settings?.reducedEffects ? 0.5 : 0.72);
       const color = shot.cast.team === 'enemy' ? '#ff8e8e' : visuals.getMoveAnimation(shot.cast.move).color;
       const angle = Math.atan2(shot.direction.y, shot.direction.x);
       if(shot.cast.team==='enemy') {

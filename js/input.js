@@ -127,9 +127,31 @@ window.SurvivorRPG.InputManager = class InputManager {
   bindActionButton(id, action) {
     const button = document.getElementById(id);
     if (!button) return;
+    let pointer = null;
     button.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || pointer !== null) return;
       event.preventDefault();
-      action();
+      pointer = event.pointerId;
+      button.setPointerCapture(pointer);
+    });
+    // Commit once on release, before a new menu can receive another gesture.
+    button.addEventListener("pointerup", (event) => {
+      if (event.pointerId !== pointer) return;
+      event.preventDefault();
+      pointer = null;
+      const rect = button.getBoundingClientRect();
+      if (!button.disabled && event.clientX >= rect.left && event.clientX <= rect.right
+        && event.clientY >= rect.top && event.clientY <= rect.bottom) action();
+    });
+    const cancel = () => { pointer = null; };
+    button.addEventListener("pointercancel", cancel);
+    button.addEventListener("lostpointercapture", cancel);
+    window.addEventListener("blur", cancel);
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      // Keyboard/accessibility activation has no pointer gesture to commit.
+      if (event.detail === 0 && !button.disabled) action();
     });
   }
 

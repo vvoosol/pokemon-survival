@@ -4,8 +4,8 @@ window.SurvivorRPG = window.SurvivorRPG || {};
   const R = window.SurvivorRPG;
   // Coordinates refer to complete, unchanged objects in the original Anil atlases.
   R.WorldArt = {
-    tree: { sx:0, sy:1248, sw:64, sh:160, solid:[14,124,36,30] },
-    pine: { sx:64, sy:1248, sw:64, sh:160, solid:[17,124,30,30] },
+    tree: { sx:128, sy:1312, sw:64, sh:128, solid:[14,96,36,26] },
+    pine: { sx:192, sy:1312, sw:64, sh:128, solid:[17,96,30,26] },
     rock: { sx:160, sy:480, sw:64, sh:64, solid:[8,25,48,32] },
     flowers: { sx:160, sy:128, sw:64, sh:32 },
     sign: { sx:224, sy:320, sw:32, sh:32, solid:[5,12,22,18] },

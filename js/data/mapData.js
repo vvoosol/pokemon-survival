@@ -136,7 +136,7 @@ window.SurvivorRPG = window.SurvivorRPG || {};
       levelMin: levelRange[0],
       levelMax: levelRange[1],
       spawnStyle,
-      maxAlive: spawnStyle === "SWARM" ? 7 : spawnStyle === "ELITE" ? 2 : 4,
+      maxAlive: spawnStyle === "ELITE" ? 2 : 4,
       respawnMin: spawnStyle === "SWARM" ? 6 : spawnStyle === "ELITE" ? 14 : 9,
       respawnMax: spawnStyle === "SWARM" ? 10 : spawnStyle === "ELITE" ? 22 : 15,
       spawnTable: table.map(([speciesId, weight]) => ({ speciesId, pokemon: speciesId, weight }))

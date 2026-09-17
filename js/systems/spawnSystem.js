@@ -17,11 +17,14 @@ window.SurvivorRPG.SpawnSystem = class SpawnSystem {
   update(dt, enemies) {
     if (!this.zones.length) return;
     for (const zone of this.zones) {
-      zone.timer -= dt;
       const aliveInZone = enemies.filter((enemy) => !enemy.dead && enemy.spawnZoneId === zone.id).length;
+      zone.timer -= dt / (aliveInZone >= 2 ? 2.5 : 1);
       const aliveTotal = enemies.filter((enemy) => !enemy.dead).length;
       if (zone.timer <= 0) {
-        if (aliveInZone < zone.maxAlive && aliveTotal < this.maxTotalEnemies) enemies.push(this.spawnOne(zone));
+        if (aliveInZone < Math.min(4,zone.maxAlive) && aliveTotal < this.maxTotalEnemies) {
+          const enemy=this.spawnOne(zone);
+          if(enemy)enemies.push(enemy);
+        }
         zone.timer = this.randomRange(zone.respawnMin, zone.respawnMax);
       }
     }
@@ -30,12 +33,17 @@ window.SurvivorRPG.SpawnSystem = class SpawnSystem {
   spawnOne(zone) {
     const speciesId = this.pickWeighted(zone.spawnTable);
     const base = window.SurvivorRPG.PokemonData[speciesId];
-    const level = Math.round(this.randomRange(zone.levelMin || base.level, zone.levelMax || base.level));
+    const entry = zone.spawnTable.find(item => (item.speciesId || item.pokemon) === speciesId);
+    const level = Math.round(this.randomRange(Math.max(zone.levelMin || base.level, entry?.minLevel || 1), zone.levelMax || base.level));
     const data = this.scaledWildData(base, level, zone.spawnStyle);
     const margin = 44;
-    const x = this.randomRange(zone.x + margin, zone.x + zone.width - margin);
-    const y = this.randomRange(zone.y + margin, zone.y + zone.height - margin);
-    return new window.SurvivorRPG.WildPokemon(data, x, y, zone.id);
+    for(let attempt=0;attempt<40;attempt++) {
+      const x = this.randomRange(zone.x + margin, zone.x + zone.width - margin);
+      const y = this.randomRange(zone.y + margin, zone.y + zone.height - margin);
+      if(window.SurvivorRPG.MovementSystem && !window.SurvivorRPG.MovementSystem.canStand(this.mapData,x,y,data.radius))continue;
+      return new window.SurvivorRPG.WildPokemon(data, x, y, zone.id);
+    }
+    return null;
   }
 
   scaledWildData(base, level, spawnStyle = "NORMAL") {

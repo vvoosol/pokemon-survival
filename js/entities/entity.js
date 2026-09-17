@@ -80,7 +80,7 @@ window.SurvivorRPG.Entity = class Entity {
       ctx.filter = `brightness(${pose.brightness})`;
     }
     if (this.hitFlash > 0) {
-      ctx.filter = "brightness(2.6)";
+      ctx.filter = assets.settings?.reducedEffects ? "brightness(1.3)" : "brightness(2.6)";
     }
     if (this.spriteLayout === 'strip') {
       const frame = Math.floor(this.animTime) % Math.max(1, Math.floor(img.width / img.height));

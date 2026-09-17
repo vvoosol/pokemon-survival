@@ -122,12 +122,19 @@ window.SurvivorRPG.UIManager = class UIManager {
     const angle = Math.atan2(healer.y - actor.y, healer.x - actor.x);
     const arrow = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'][(Math.round(angle / (Math.PI / 4)) + 8) % 8];
     const cooldown = Math.max(0, Math.ceil(run.healReadyAt - run.elapsed));
-    this.survivalHud.textContent = `서바이벌 ${clock} · ${state}\n야생 Lv.${difficulty.levelMin}~${difficulty.levelMax} · 처치 ${run.kills}\n치료소 ${arrow} ${cooldown ? `${cooldown}초` : '준비 완료'}`;
+    this.survivalHud.textContent = `${run.phase()} ${clock} · ${state}\n야생 Lv.${difficulty.levelMin}~${difficulty.levelMax} · 처치 ${run.kills}\n치료소 ${arrow} ${cooldown ? `${cooldown}초` : '준비 완료'}`;
     if (!this.survivalResult.hidden) document.getElementById('survivalResultStats').textContent =
-      `생존 15:00 · 처치 ${run.kills} · 포획 ${run.captures}`;
+      `생존 15:00 · 처치 ${run.kills} · 포획 ${run.captures}\n획득 ${run.stats.earned}원\n`
+      + game.partyPokemon.map(p=>`${p.name}: 피해 ${run.stats.damage[p.uniqueId] || 0}`).join('\n')
+      + (run.stats.caught.length?'\n포획: '+[...new Set(run.stats.caught)].map(id=>window.SurvivorRPG.PokemonData[id]?.name || id).join(', '):'')
+      + '\n' + run.stats.rewards.join(' · ');
   }
 
   renderParty(game) {
+    const signature=game.partyPokemon.map(p=>[p.uniqueId,p.speciesId,p.hp,p.maxHp,p.dead,this.iconFor(p)].join(':')).join('|')
+      +game.selectedPokemon?.uniqueId+game.activePokemon?.uniqueId+game.partyBattle.members.map(p=>p.uniqueId).join(',');
+    if(this.partySignature===signature)return;
+    this.partySignature=signature;
     this.partyPanel.innerHTML = "";
     for (let index = 0; index < 6; index += 1) {
       const pokemon = game.partyPokemon[index];
@@ -151,10 +158,12 @@ window.SurvivorRPG.UIManager = class UIManager {
   }
 
   renderMoveCooldowns(game, player) {
-    this.moveCooldownList.innerHTML = "";
     const slots = [...player.equippedMoves];
     while (slots.length < 4) slots.push(null);
-    slots.forEach((slot) => {
+    const signature=slots.map(slot=>slot?slot.moveId+':'+slot.upgradeLevel:'-').join('|');
+    if(this.moveSignature!==signature) {
+      this.moveSignature=signature;this.moveCooldownList.innerHTML='';
+      slots.forEach((slot) => {
       const row = document.createElement("div");
       row.className = "move-cooldown-row";
       if (!slot) {
@@ -173,6 +182,14 @@ window.SurvivorRPG.UIManager = class UIManager {
         <div class="meter"><div style="width:${ratio * 100}%"></div></div>
       `;
       this.moveCooldownList.appendChild(row);
+      });
+    }
+    slots.forEach((slot,index)=>{
+      const row=this.moveCooldownList.children[index];if(!slot)return;
+      const move=window.SurvivorRPG.MoveData[slot.moveId];
+      const cooldown=game.statSystem.calculateMoveCooldown(move,player.speed,slot.upgradeLevel || 0);
+      row.querySelector('.meter > div').style.width=(game.mode==='pokemon'?(1-Math.min(1,(slot.cooldownRemaining || 0)/cooldown))*100:0)+'%';
+      row.classList.toggle('ready',game.mode==='pokemon'&&slot.cooldownRemaining<=0);
     });
   }
 
@@ -200,6 +217,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     });
     this.choiceSelection = 0;
     this.updateChoiceSelection();
+    this.bindChoiceFocus();
     this.choiceOverlay.hidden = false;
   }
 
@@ -214,7 +232,8 @@ window.SurvivorRPG.UIManager = class UIManager {
       card.type = "button";
       card.className = "choice-card";
       card.dataset.selectable = "";
-      card.innerHTML = this.moveCardHtml(move, slot.upgradeLevel || 0, "이 기술을 잊고 새 기술을 배웁니다.", index + 1);
+      card.innerHTML = this.moveCardHtml(move, slot.upgradeLevel || 0, learn.confirmForgetIndex===index
+        ? "강화 효과도 사라집니다. 이 기술을 잊겠습니까?" : "이 기술을 잊고 새 기술을 배웁니다.", index + 1);
       card.addEventListener("click", () => onSelect(index));
       this.choiceCards.appendChild(card);
     });
@@ -227,6 +246,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.choiceCards.appendChild(skip);
     this.choiceSelection = 0;
     this.updateChoiceSelection();
+    this.bindChoiceFocus();
     this.choiceOverlay.hidden = false;
   }
 
@@ -234,7 +254,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     const stars = "★".repeat(upgradeLevel) + "☆".repeat(Math.max(0, 4 - upgradeLevel));
     return `
       <strong>${label}: ${move.name}</strong>
-      <span class="choice-summary">${move.type.toUpperCase()} · ${move.category} · 위력 ${move.power}</span>
+      <span class="choice-summary">${window.SurvivorRPG.DataAdapter.getTypeData(move.type).name} · ${move.category==='physical'?'물리':'특수'} · 위력 ${move.power}</span>
       <span class="choice-description">쿨타임 ${move.baseCooldown.toFixed(1)}초 · ${stars}<br>${description}</span>
       <span class="choice-key">${key}</span>
     `;
@@ -243,6 +263,14 @@ window.SurvivorRPG.UIManager = class UIManager {
   hideLevelChoices() {
     this.choiceOverlay.hidden = true;
     this.choiceCards.innerHTML = "";
+  }
+
+  bindChoiceFocus() {
+    [...this.choiceCards.children].forEach((card,index)=>{
+      card.addEventListener('pointerenter',()=>{this.choiceSelection=index;this.updateChoiceSelection();});
+      card.addEventListener('focus',()=>{this.choiceSelection=index;this.updateChoiceSelection();});
+      card.addEventListener('click',()=>this.currentGame?.assets.play('uiConfirm',.32));
+    });
   }
 
   hideMoveLearning() {
@@ -261,7 +289,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.menuOverlay.dataset.view = game.menuView;
     this.menuOverlay.dataset.summaryPage = this.summaryPage;
     this.menuWindow.className = "menu-window";
-    if (["main", "report", "areaSelect", "formation", "professor", "starterSelect", "starterConfirm", "resetConfirm"].includes(game.menuView)) this.menuWindow.classList.add("menu-window--compact");
+    if (["main", "report", "settings", "areaSelect", "formation", "professor", "starterSelect", "starterConfirm", "resetConfirm"].includes(game.menuView)) this.menuWindow.classList.add("menu-window--compact");
 
     if (game.menuView === "pokemon") this.renderPokemonMenu(game);
     else if (game.menuView === "summary") this.renderSummaryMenu(game, game.menuSelectedPokemonIndex);
@@ -271,6 +299,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     else if (game.menuView === "bagTarget") this.renderBagTargetMenu(game);
     else if (game.menuView === "mart") this.renderMartMenu(game);
     else if (game.menuView === "report") this.renderReportMenu(game);
+    else if (game.menuView === "settings") this.renderSettingsMenu(game);
     else if (game.menuView === "formation") this.renderFormationMenu(game);
     else if (["professor", "starterSelect", "starterConfirm", "resetConfirm"].includes(game.menuView)) this.renderProfessorMenu(game);
     else this.renderMainMenu(game);
@@ -296,6 +325,7 @@ window.SurvivorRPG.UIManager = class UIManager {
           ${this.menuOption("report", "assets/ui/pause/saveA.png", "리포트")}
           ${this.menuOption("mart", "assets/ui/pause/playercardA.png", "포켓마트")}
           ${this.menuOption("formation", "assets/ui/pause/optionsA.png", "배틀 모드")}
+          ${this.menuOption("settings", "assets/ui/pause/optionsA.png", "설정")}
           <button class="menu-option" data-action="close" data-selectable><span class="menu-option-content"><img class="menu-icon" src="assets/ui/pause/exitA.png" alt="">닫기</span></button>
         </div>
       </section>
@@ -330,6 +360,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     let content;
     if (game.menuView === 'professor') {
       content = `<button class="menu-option" data-professor="starterSelect" data-selectable>스타팅 포켓몬 변경</button>
+        ${game.balls.pokeBall===0&&game.money<50?'<button class="menu-option" data-supply data-selectable>몬스터볼 지원받기</button>':''}
         <button class="menu-option" data-professor="resetConfirm" data-selectable>새로 시작</button>
         <button class="menu-option" data-close data-selectable>대화 종료</button>`;
     } else if (game.menuView === 'starterSelect') {
@@ -342,9 +373,9 @@ window.SurvivorRPG.UIManager = class UIManager {
         <button class="menu-option" data-change data-selectable>${game.awaitingStarter ? '파트너 받기' : '변경하기'}</button>
         <button class="menu-option" data-back data-selectable>취소</button>`;
     } else {
-      content = `<p class="professor-notice">새 모험을 시작할까요?<br>포켓몬·재화·구매한 배틀 모드·도감·저장 리포트가 모두 초기화됩니다.</p>
+      content = `<p class="professor-notice">새 모험을 시작할까요?<br>파티·재화·구매한 배틀 모드는 초기화됩니다. 도감·연구 업적은 보존됩니다.</p>
         <button class="menu-option" data-back data-selectable>취소</button>
-        <button class="menu-option" data-reset data-selectable>모두 초기화하고 시작</button>`;
+        <button class="menu-option" data-reset data-selectable>새 파트너로 시작</button>`;
     }
     this.menuRoot.innerHTML = `<section class="compact-screen"><div class="menu-title">오박사</div><div class="menu-list">${content}</div></section>`;
     this.menuRoot.dataset.columns = '1';
@@ -352,6 +383,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.bindMenuButton('[data-starter]', (button) => game.chooseStarter(button.dataset.starter));
     this.bindMenuButton('[data-change]', () => game.changeStarter());
     this.bindMenuButton('[data-reset]', () => game.resetAtProfessor());
+    this.bindMenuButton('[data-supply]', () => game.receiveEmergencyBalls());
     this.bindMenuButton('[data-back]', () => game.backMenu(), 'cancel');
     this.bindMenuButton('[data-close]', () => game.toggleMenu(), 'cancel');
   }
@@ -619,6 +651,9 @@ window.SurvivorRPG.UIManager = class UIManager {
         <div class="menu-list">
           <button class="menu-action" data-action="save" data-selectable>리포트 저장</button>
           <button class="menu-action" data-action="load" data-selectable>리포트 불러오기</button>
+          <button class="menu-action" data-action="export" data-selectable>리포트 내보내기</button>
+          <button class="menu-action" data-action="import" data-selectable>리포트 가져오기</button>
+          <input type="file" accept=".json,application/json" id="reportImport" hidden>
           <button class="menu-action" data-action="back" data-selectable>뒤로</button>
         </div>
       </section>
@@ -626,6 +661,11 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.menuRoot.dataset.columns = "1";
     this.bindMenuButton("[data-action='save']", () => game.saveGame());
     this.bindMenuButton("[data-action='load']", () => game.loadGame());
+    this.bindMenuButton("[data-action='export']", () => {
+      try{window.SurvivorRPG.SaveStore.export(game.serializeRun());}catch{game.message('내보낼 리포트가 없습니다.',2);}
+    });
+    this.bindMenuButton("[data-action='import']", () => this.menuRoot.querySelector('#reportImport').click());
+    this.menuRoot.querySelector('#reportImport').addEventListener('change',event=>game.importReport(event.target.files[0]));
     this.bindMenuButton("[data-action='back']", () => game.openMenuView("main"), "cancel");
   }
 
@@ -648,8 +688,25 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.bindMenuButton("[data-action='back']", () => game.openMenuView("main"), "cancel");
   }
 
+  renderSettingsMenu(game) {
+    const s=game.assets.settings;
+    this.menuRoot.innerHTML=`<section class="compact-screen"><div class="menu-title">설정</div>
+      <div class="menu-list">
+        <label class="menu-option">배경 음악 <input aria-label="배경 음악" data-setting="music" data-selectable type="range" min="0" max="100" step="5" value="${Math.round(s.music*100)}"></label>
+        <label class="menu-option">효과음 <input aria-label="효과음" data-setting="effects" data-selectable type="range" min="0" max="100" step="5" value="${Math.round(s.effects*100)}"></label>
+        <label class="menu-option"><input data-setting="reducedEffects" data-selectable type="checkbox" ${s.reducedEffects?'checked':''}> 전투 번쩍임 줄이기</label>
+        <button class="menu-action" data-action="back" data-selectable>뒤로</button>
+      </div></section>`;
+    this.menuRoot.dataset.columns='1';
+    this.menuRoot.querySelectorAll('[data-setting]').forEach(input=>input.addEventListener('input',()=>game.assets.configure(input.dataset.setting,input.type==='checkbox'?input.checked:input.value/100)));
+    this.bindMenuButton('[data-action="back"]',()=>game.backMenu(),'cancel');
+  }
+
   bindMenuButton(selector, handler, sound = "confirm") {
     this.menuRoot.querySelectorAll(selector).forEach((button) => {
+      let gestureStartedHere = false;
+      button.addEventListener("pointerdown", () => { gestureStartedHere = true; });
+      button.addEventListener("pointercancel", () => { gestureStartedHere = false; });
       button.addEventListener("pointerenter", () => {
         const index = this.selectables().indexOf(button);
         if (index >= 0 && index !== this.selectedIndex) {
@@ -657,7 +714,16 @@ window.SurvivorRPG.UIManager = class UIManager {
           this.refreshSelection(true);
         }
       });
-      button.addEventListener("click", () => {
+      button.addEventListener("click", (event) => {
+        const freshGesture = gestureStartedHere;
+        gestureStartedHere = false;
+        if (event.detail > 0 && !freshGesture) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        this.selectedIndex=this.selectables().indexOf(button);
+        this.selectedByView.set(this.currentGame.menuView,this.selectedIndex);
         this.currentGame?.assets.play(sound === "cancel" ? "uiCancel" : "uiConfirm", 0.38);
         handler(button);
       });
@@ -697,6 +763,9 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.navRepeat = firstPress ? 0.34 : 0.13;
     const columns = isChoice ? 3 : Math.max(1, Number(this.menuRoot.dataset.columns) || 1);
     const current = isChoice ? this.choiceSelection : this.selectedIndex;
+    if(!isChoice && items[current]?.type==='range' && ['left','right'].includes(direction)) {
+      const slider=items[current];slider.value=Number(slider.value)+(direction==='right'?5:-5);slider.dispatchEvent(new Event('input'));return true;
+    }
     const delta = direction === "left" ? -1 : direction === "right" ? 1 : direction === "up" ? -columns : columns;
     const next = Math.max(0, Math.min(items.length - 1, current + delta));
     if (next === current) return false;

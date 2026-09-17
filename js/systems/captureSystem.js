@@ -6,6 +6,8 @@ window.SurvivorRPG.CaptureSystem = class CaptureSystem {
   }
 
   nearestTarget(trainer, enemies) {
+    if(this.lockedTarget && enemies.includes(this.lockedTarget) && this.canAttempt(trainer,this.lockedTarget))return this.lockedTarget;
+    this.lockedTarget=null;
     let best = null;
     let bestDistance = Infinity;
     enemies.forEach((enemy) => {
@@ -19,6 +21,12 @@ window.SurvivorRPG.CaptureSystem = class CaptureSystem {
     return best;
   }
 
+  cycleTarget(trainer,enemies,current) {
+    const list=enemies.filter(e=>this.canAttempt(trainer,e)).sort((a,b)=>Math.hypot(a.x-trainer.x,a.y-trainer.y)-Math.hypot(b.x-trainer.x,b.y-trainer.y));
+    this.lockedTarget=list[(list.indexOf(current)+1)%list.length] || null;
+    return this.lockedTarget;
+  }
+
   canAttempt(trainer, wildPokemon) {
     if (!wildPokemon || wildPokemon.dead || wildPokemon.state === "captured" || wildPokemon.state === "capture_sequence") return false;
     return Math.hypot(wildPokemon.x - trainer.x, wildPokemon.y - trainer.y) <= this.captureRange;
@@ -30,7 +38,7 @@ window.SurvivorRPG.CaptureSystem = class CaptureSystem {
     const ballModifier = ball.catchModifier || 1;
     const speciesFactor = catchRate / 255;
     const hpFactor = 0.22 + (1 - hpRatio) * 0.68;
-    return Math.max(0.03, Math.min(0.95, speciesFactor * ballModifier * hpFactor));
+    return Math.max(0.03, Math.min(0.95, speciesFactor * ballModifier * hpFactor + (wildPokemon.captureFailures || 0)*.06));
   }
 
   tryCapture(wildPokemon, ball) {
