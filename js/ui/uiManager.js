@@ -55,8 +55,8 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.partyActionBtn.disabled = game.partyPokemon.filter((pokemon) => pokemon && !pokemon.dead).length < 2;
     this.renderMoveCooldowns(game, player);
     this.renderParty(game);
-    this.levelToast.hidden = game.combatSystem.levelToastTime <= 0;
-    if (!this.levelToast.hidden) this.levelToast.textContent = `레벨 업! ${player.name} Lv.${player.level}`;
+    this.levelToast.hidden = !game.progressNotice;
+    if (!this.levelToast.hidden) this.levelToast.textContent = game.progressNotice.text;
     this.messageBox.hidden = game.messageTimer <= 0;
     if (!this.messageBox.hidden) this.messageBox.textContent = game.messageText;
     this.gameOver.hidden = game.mode !== "gameOver";

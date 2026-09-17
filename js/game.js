@@ -58,6 +58,8 @@ window.SurvivorRPG.Game = class Game {
     this.debug = false;
     this.messageText = "";
     this.messageTimer = 0;
+    this.progressNotices = [];
+    this.progressNotice = null;
     this.lastCaptureResult = null;
     this.evolutionFlash = null;
     this.switchFlash = null;
@@ -101,6 +103,8 @@ window.SurvivorRPG.Game = class Game {
   }
 
   reset({starterPending=false}={}) {
+    this.progressNotices = [];
+    this.progressNotice = null;
     this.awaitingStarter = false;
     this.menuOpen = false;
     this.menuView = "main";
@@ -235,6 +239,7 @@ window.SurvivorRPG.Game = class Game {
 
   update(dt) {
     if(this.suspended)return;
+    this.updateProgressNotices(dt);
     const crisis=this.mode==='pokemon' && (this.player.hp/this.player.maxHp<(this.musicCrisis ? 0.4 : 0.2));
     this.musicCrisis=crisis;
     this.assets.setMusic(this.survival?.status==='cleared'?'hub':crisis||this.survival?.elapsed>=840?'final'
@@ -268,7 +273,6 @@ window.SurvivorRPG.Game = class Game {
       const target = this.activePokemon || this.selectedPokemon || this.player;
       const events = target.gainExp(target.expToNext);
       events.forEach((event) => this.enqueueLevelUp({ ...event, pokemon: target }));
-      this.combatSystem.levelToastTime = 1.2;
     }
     if (this.debug && this.input.consumeSetTargetWeak()) {
       this.debugWeakenCaptureTarget();
@@ -815,10 +819,6 @@ window.SurvivorRPG.Game = class Game {
           levelEvents.forEach((event) => this.enqueueLevelUp({ ...event, pokemon }));
         });
     }
-    if (recipients.length && this.levelUpQueue.length) {
-      this.combatSystem.levelToastTime = 1.5;
-      this.assets.play("level", 0.45);
-    }
   }
 
   handleActiveFainted() {
@@ -880,6 +880,7 @@ window.SurvivorRPG.Game = class Game {
   processLevelEvent(event) {
     const pokemon = event.pokemon || this.player;
     if(event.rewardOnly) {this.continueLevelPipeline(event);return;}
+    this.notifyProgress(`레벨 업! ${pokemon.name} Lv.${event.fromLevel} → Lv.${event.toLevel}`, "level");
     this.statSystem.applyNativeStatGrowth(pokemon);
     const newMoveId = this.nextMoveForLevel(pokemon, event.toLevel);
     if (newMoveId && this.queueMoveLearning(pokemon, newMoveId, event)) return;
@@ -898,7 +899,11 @@ window.SurvivorRPG.Game = class Game {
 
   continueLevelPipeline(event) {
     const pokemon = event.pokemon || this.player;
-    this.checkEvolution(event, pokemon);
+    if (!event.rewardOnly) this.checkEvolution(event, pokemon);
+    if (!event.rewardOnly && event.toLevel % 5 !== 0) {
+      this.openNextLevelChoice();
+      return;
+    }
     this.mode = "levelChoice";
     this.menuOpen=false;
     this.ui.hideGameMenu();
@@ -915,6 +920,7 @@ window.SurvivorRPG.Game = class Game {
     if (!move || move.category === "status" || move.power <= 0) return false;
     if (pokemon.equippedMoves.length < 4) {
       pokemon.addMove(moveId);
+      this.notifyProgress(`${pokemon.name}은(는) ${move.name}을 배웠다!`, "move");
       this.message(`${pokemon.name}은(는) ${move.name}을 배웠다!`, 2.0);
       return false;
     }
@@ -947,6 +953,7 @@ window.SurvivorRPG.Game = class Game {
     const oldMove = window.SurvivorRPG.MoveData[oldSlot.moveId];
     const newMove = window.SurvivorRPG.MoveData[learn.moveId];
     pokemon.replaceMove(index, learn.moveId);
+    this.notifyProgress(`${pokemon.name}은(는) ${newMove.name}을 배웠다!`, "move");
     this.message(`${pokemon.name}은(는) ${oldMove.name}을 잊고 ${newMove.name}을 배웠다!`, 2.2);
     this.finishMoveLearning();
   }
@@ -1005,6 +1012,25 @@ window.SurvivorRPG.Game = class Game {
   message(text, seconds = 1.8) {
     this.messageText = text;
     this.messageTimer = seconds;
+  }
+
+  notifyProgress(text, kind) {
+    this.progressNotices ||= [];
+    this.progressNotices.push({ text, kind, remaining: kind === "move" ? 3.2 : 2.6 });
+    this.updateProgressNotices(0);
+  }
+
+  updateProgressNotices(dt) {
+    // Use UI time so learning/choice dialogs do not freeze a stale notification.
+    if (this.menuOpen) return;
+    if (this.progressNotice) {
+      this.progressNotice.remaining -= dt;
+      if (this.progressNotice.remaining <= 0) this.progressNotice = null;
+    }
+    if (!this.progressNotice && this.progressNotices?.length) {
+      this.progressNotice = this.progressNotices.shift();
+      if (this.progressNotice.kind === "level") this.assets.play("level", 0.45);
+    }
   }
 
   toggleMenu() {
@@ -1319,6 +1345,7 @@ window.SurvivorRPG.Game = class Game {
     this.awaitingStarter=false;
     this.journal.awaitingStarter=false;
     this.levelUpQueue=[];this.currentLevelEvent=null;this.currentMoveLearn=null;
+    this.progressNotices=[];this.progressNotice=null;
     this.currentChoices=[];this.choiceLocked=false;this.transition=null;
     this.ui.hideLevelChoices();this.ui.hideMoveLearning();
     this.mode = "trainer";
