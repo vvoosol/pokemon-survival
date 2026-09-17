@@ -398,6 +398,7 @@ button {
 }
 
 .gameboy-controls {
+  --control-center-y: calc(100% - 220px);
   position: absolute;
   inset: 0;
   z-index: 6;
@@ -407,7 +408,7 @@ button {
 .touch-zone {
   position: absolute;
   left: 54px;
-  top: 50%;
+  top: var(--control-center-y);
   width: 146px;
   height: 146px;
   display: grid;
@@ -463,7 +464,7 @@ button {
 .face-buttons {
   position: absolute;
   right: 54px;
-  top: 50%;
+  top: var(--control-center-y);
   display: flex;
   gap: 18px;
   align-items: center;
@@ -531,7 +532,7 @@ button {
   bottom: 16px;
   display: flex;
   gap: 16px;
-  transform: translateX(-50%) rotate(-12deg);
+  transform: translateX(-50%);
   pointer-events: auto;
 }
 
@@ -1251,6 +1252,10 @@ button {
 .choice-card:disabled, .menu-option:disabled, .menu-action:disabled { opacity: .45; cursor: default; }
 .party-slot { background: url("assets/ui/pause/bgMid.png") center / 100% 4px repeat-y; border-color: #9aa9b0; }
 .party-slot.selected { border-image: url("assets/ui/pause/selector.png") 8 stretch; }
+.menu-window input[type="range"] { display: block; width: 100%; accent-color: #ee842e; }
+.menu-window input[type="checkbox"] { accent-color: #ee842e; }
+#survivalResultStats { white-space: pre-line; max-height: 340px; overflow: auto; }
+.player-hud::after { content: "HP"; position: absolute; left: 130px; top: 43px; width: 28px; height: 15px; font-size: 14px; line-height: 15px; color: white; text-align: center; background: url("assets/ui/anil-databox-normal.png") -130px -59px / 312px 101px; }
 
 /* Native Anil screens keep the original 512x384 coordinates and pixel aspect. */
 .native-screen { position: absolute; width: 512px; height: 384px; transform: scale(1.875); transform-origin: top left; color: white; font-size: 22px; font-weight: 400; text-shadow: 1px 2px #52616a; image-rendering: pixelated; }

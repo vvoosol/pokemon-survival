@@ -152,6 +152,23 @@ Double/Triple Battle shop entries reuse the existing original Poke Ball item ico
 
 Do not add external image assets. New visual assets must come from the Anil archive listed below.
 
+World polish reuses the existing complete `Exterior.png` atlas for town buildings,
+trees, grass, paths, flowers, signs and rocks. Source rectangles and collision feet
+are listed in `js/data/worldLayout.js`. `Graphics/Tilesets/Cueva1.png` is copied
+unchanged to `assets/tilesets/cave.png` for cave floors and boulders. Choice/result
+frames reuse the existing DP Pause Menu `bgTop.png`, `bgMid.png`, `bgBtm.png`
+and selector images. No replacement UI bitmap or map artwork was generated.
+
+Music is copied unchanged from the original `Audio/BGM/` directory:
+
+| Original | Local asset | Use |
+| --- | --- | --- |
+| CiudadAnil.ogg | assets/audio/hub.ogg | Town |
+| BosqueVerde.ogg | assets/audio/field.ogg | Hunting fields |
+| Cueva.ogg | assets/audio/cave.ogg | Cave hunting |
+| CombateHoenn.ogg | assets/audio/survival.ogg | Survival |
+| Climax.ogg | assets/audio/final.ogg | Low HP / final wave |
+
 The generation expansion is reproducibly imported by `tools/import-battle-rewards.cjs`.
 The 60 selected species in `tools/expansion-roster.cjs` use unchanged original
 `Graphics/Characters/Followers/{SPECIES}.png`, `Graphics/Pokemon/Icons/{SPECIES}.png`
