@@ -321,9 +321,9 @@ window.SurvivorRPG.UIManager = class UIManager {
         <div class="menu-list" aria-label="메뉴">
           ${this.menuOption("pokemon", "assets/ui/pause/pokemonA.png", "포켓몬")}
           ${this.menuOption("bag", "assets/ui/pause/bagA.png", "가방")}
-          ${this.menuOption("pokedex", "assets/ui/pause/pokedexA.png", "포켓몬 도감")}
+          ${this.menuOption("pokedex", "assets/ui/pause/pokedexA.png", "도감")}
           ${this.menuOption("report", "assets/ui/pause/saveA.png", "리포트")}
-          ${this.menuOption("formation", "assets/ui/pause/optionsA.png", "배틀 모드")}
+          ${this.menuOption("formation", "assets/ui/pause/controlesA.png", "배틀 설정")}
           ${this.menuOption("settings", "assets/ui/pause/optionsA.png", "설정")}
           <button class="menu-option" data-action="close" data-selectable><span class="menu-option-content"><img class="menu-icon" src="assets/ui/pause/exitA.png" alt="">닫기</span></button>
         </div>
@@ -498,13 +498,11 @@ window.SurvivorRPG.UIManager = class UIManager {
   renderPokedexMenu(game) {
     const species = Object.values(window.SurvivorRPG.PokemonData).sort((a, b) => (a.dexNo || 999) - (b.dexNo || 999));
     this.menuRoot.innerHTML = `
-      <section class="pokedex-screen">
-        <div class="menu-title">포켓몬 도감</div>
-        <div class="pokedex-content">
-          <div class="pokedex-preview"></div>
-          <div class="pokedex-list"></div>
-        </div>
-        <div class="menu-footer"><button class="menu-action" data-action="back" data-selectable>뒤로</button></div>
+      <section class="native-screen anil-pokedex-screen" aria-label="포켓몬 도감">
+        <h2 class="anil-pokedex-title">포켓몬 도감</h2>
+        <div class="pokedex-preview"></div>
+        <div class="pokedex-list" aria-label="도감 목록"></div>
+        <button class="anil-pokedex-back" data-action="back" data-selectable aria-label="메뉴로 돌아가기">뒤로</button>
       </section>
     `;
     const list = this.menuRoot.querySelector(".pokedex-list");
@@ -516,9 +514,9 @@ window.SurvivorRPG.UIManager = class UIManager {
       row.dataset.pokedexId = item.id;
       row.dataset.selectable = "";
       row.innerHTML = `
-        ${state.seen ? `<img src="${item.icon || `assets/pokemon-icons/${item.id}.png`}" alt="">` : "<span></span>"}
-        <strong>No.${String(item.dexNo || 0).padStart(3, "0")} ${state.seen ? item.name : "???"}</strong>
-        <span>${state.caught ? "포획" : state.seen ? "발견" : "미발견"}</span>
+        ${state.seen ? `<span class="pokedex-icon" style="background-image:url('${item.icon || `assets/pokemon-icons/${item.id}.png`}')" aria-hidden="true"></span>` : '<span class="pokedex-icon pokedex-icon--unknown" aria-hidden="true">?</span>'}
+        <strong><small>No.${String(item.dexNo || 0).padStart(3, "0")}</small>${state.seen ? item.name : "???"}</strong>
+        <span class="pokedex-state">${state.caught ? "●" : state.seen ? "○" : "―"}</span>
       `;
       list.appendChild(row);
     });
@@ -536,9 +534,10 @@ window.SurvivorRPG.UIManager = class UIManager {
     preview.innerHTML = state.seen ? `
       <div class="pokedex-sprite-frame"><img src="${item.frontSprite || item.sprite}" alt=""></div>
       <h2>No.${String(item.dexNo || 0).padStart(3, "0")} ${item.name}</h2>
-      <p>${(item.types || []).map((type) => type.toUpperCase()).join(" / ")}</p>
-      <p>${item.pokedex || "관찰 기록이 아직 없습니다."}</p>
-    ` : `<h2>미발견 포켓몬</h2><p>필드에서 만나면 정보가 기록됩니다.</p>`;
+      <div class="pokedex-types">${(item.types || []).map((type) => this.typeIcon(type)).join("")}</div>
+      <p class="pokedex-description">${item.pokedex || "관찰 기록이 아직 없습니다."}</p>
+      <p class="pokedex-caught">${state.caught ? "포획 완료" : "발견 기록"}</p>
+    ` : `<div class="pokedex-unknown">?</div><h2>미발견 포켓몬</h2><p class="pokedex-description">필드에서 만나면 정보가 기록됩니다.</p>`;
   }
 
   renderBagMenu(game) {

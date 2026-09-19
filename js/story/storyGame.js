@@ -599,7 +599,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
   async storyScript(script, frame) {
     const text = script.trim();
     // A 355/655 block may contain several independent native calls.
-    if (text.includes('\n') && text.split('\n').every(line => /^(pbReceiveItem|pbGetKeyItem|pbSetSelfSwitch)\(/.test(line.trim()))) {
+    if (text.includes('\n') && text.split('\n').every(line => /^(pbReceiveItem|pbItemBall|pbGetKeyItem|pbSetSelfSwitch)\(/.test(line.trim()))) {
       for (const line of text.split('\n')) await this.storyScript(line, frame);
       return;
     }
@@ -607,7 +607,9 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (badge) { this.story.badges[Number(badge[1])] = true; return; }
     const badgeAnimation = text.match(/^renderBadgeAnimation\(([0-2])\)$/);
     if (badgeAnimation) { this.notifyProgress(`배지 ${Number(badgeAnimation[1]) + 1} 획득!`, 'reward'); return; }
-    const item = text.match(/^(?:pbReceiveItem|pbItemBall)\(:(\w+)(?:,\s*(\d+))?\)$/);
+    const fieldItem = text.match(/^pbItemBall\(:(\w+)(?:,\s*(\d+))?\)$/);
+    if (fieldItem) return this.receiveFieldItem(fieldItem[1], Number(fieldItem[2] || 1));
+    const item = text.match(/^pbReceiveItem\(:(\w+)(?:,\s*(\d+))?\)$/);
     if (item) return this.receiveStoryItem(item[1], Number(item[2] || 1));
     const keyItem = text.match(/^pbGetKeyItem\("(\w+)"\)$/);
     if (keyItem) { this.story.keyItems[keyItem[1]] = 1; return true; }
@@ -724,13 +726,13 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (autorun) { this.autoruns.add(`${autorun.event.id}:${autorun.pageIndex}`); this.runStoryEvent(autorun.event, autorun.pageIndex); return; }
     if (this.story.mapId === 1 && this.story.switches[179] && !this.story.switches[180]) {
       this.storyBusy = true;
-      this.askStory('¿Qué aspecto tienes?', ['Chica', 'Chico']).then(index => {
+      this.askStory('어떤 모습으로 시작할까요?', ['여자', '남자']).then(index => {
         this.story.variables[150] = index + 1; this.story.switches[180] = true; this.storyBusy = false;
       }); return;
     }
     if (this.story.mapId === 104 && this.story.switches[323] && ![109, 110, 111].some(id => this.story.switches[id])) {
       this.storyBusy = true;
-      this.askStory('Selecciona el modo de juego.', ['Modo Clásico', 'Modo Completo', 'Modo Radical']).then(index => {
+      this.askStory('게임 모드를 선택하세요.', ['클래식 모드', '완전 모드', '래디컬 모드']).then(index => {
         this.story.switches[109 + index] = true; this.storyBusy = false;
       }); return;
     }
@@ -804,6 +806,11 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (id === 'POTION') this.items.potion = (this.items.potion || 0) + amount;
     this.notifyProgress(`${data.Name} ×${amount}`, 'reward');
     return true;
+  }
+  receiveFieldItem(sourceId, amount = 1) {
+    if (!Number.isInteger(amount) || amount < 1) throw Error(`Invalid field item amount: ${amount}`);
+    const hash = [...String(sourceId)].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return this.receiveStoryItem(hash % 2 ? 'POKEBALL' : 'POTION', amount);
   }
   addStoryPokemon(id, level) {
     const species = window.SurvivorRPG.PokemonData[id.toLowerCase()];
@@ -897,7 +904,16 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (!this.storyRenderer) return super.draw();
     const ctx = this.ctx; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, this.width, this.height); ctx.save(); ctx.scale(this.worldZoom, this.worldZoom);
     const entities = [this.activePokemon || this.trainer, ...this.partyBattle.members, ...this.enemies];
-    const actors = entities.map(entity => ({y: entity.y, order: 3, draw: () => entity.draw(ctx, this.camera, this.assets, this.combatSystem.poseFor(entity))}));
+    const actors = entities.map(entity => ({y: entity.y, order: 3, draw: () => {
+      entity.draw(ctx, this.camera, this.assets, this.combatSystem.poseFor(entity));
+      if (entity !== this.trainer) {
+        this.drawPokemonOverheadLabel(entity, entity === this.activePokemon || this.partyBattle.members.includes(entity));
+      }
+      if (this.enemies.includes(entity)) {
+        this.drawEnemyHp(entity);
+        entity.drawOverhead(ctx, this.camera);
+      }
+    }}));
     this.storyRenderer.draw(ctx, this.camera, this.story, performance.now() / 1000, actors, this.storyPositions, this.erasedStoryEvents);
     this.drawStoryProxies(ctx);
     this.combatSystem.drawEffects(ctx, this.camera); this.drawSwitchFlash(); ctx.restore();

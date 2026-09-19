@@ -1,9 +1,49 @@
 window.SurvivorRPG.StorySpawnSystem = class StorySpawnSystem extends window.SurvivorRPG.SpawnSystem {
+  constructor(mapData) {
+    super(mapData);
+    this.maxTotalEnemies = 4;
+  }
+
+  update(dt, enemies) {
+    if (!this.zones.length) return;
+    const alive = enemies.filter(enemy => !enemy.dead);
+    const aliveTotal = alive.length;
+    if (aliveTotal >= this.maxTotalEnemies) return;
+
+    // Keep the first two encounters responsive, then open the third/fourth slots
+    // more gradually so a new area does not flood the player at once.
+    const pace = aliveTotal < 2 ? 1 : aliveTotal === 2 ? 0.38 : 0.22;
+    const ready = [];
+    for (const zone of this.zones) {
+      zone.timer -= dt * pace;
+      if (zone.timer > 0) continue;
+      const aliveInZone = alive.filter(enemy => enemy.spawnZoneId === zone.id).length;
+      if (aliveInZone < Math.min(4, zone.maxAlive)) ready.push(zone);
+      else zone.timer = this.randomRange(zone.respawnMin, zone.respawnMax);
+    }
+    if (!ready.length) return;
+
+    const zone = ready[Math.floor(Math.random() * ready.length)];
+    const enemy = this.spawnOne(zone);
+    zone.timer = this.randomRange(zone.respawnMin, zone.respawnMax);
+    if (!enemy) return;
+    enemies.push(enemy);
+
+    const nextTotal = aliveTotal + 1;
+    if (nextTotal >= 2) {
+      const delayScale = nextTotal === 2 ? 1.2 : nextTotal === 3 ? 1.8 : 2.4;
+      for (const other of this.zones) {
+        if (other === zone) continue;
+        other.timer = Math.max(other.timer, this.randomRange(other.respawnMin, other.respawnMax) * delayScale);
+      }
+    }
+  }
+
   spawnOne(zone) {
     const R = window.SurvivorRPG, id = this.pickWeighted(zone.spawnTable);
     const entry = zone.spawnTable.find(p => p.speciesId === id);
     const level = entry.minLevel + Math.floor(Math.random() * (entry.maxLevel - entry.minLevel + 1));
-    const data = {...this.scaledWildData(R.PokemonData[id], level), radius: 10, scale: .7};
+    const data = {...this.scaledWildData(R.PokemonData[id], level), radius: 10, scale: .7, aggroRadius: 220};
     for (let attempt = 0; attempt < 40; attempt++) {
       const tile = zone.tiles[Math.floor(Math.random() * zone.tiles.length)];
       const x = tile[0] * 32 + 16, y = tile[1] * 32 + 16;
