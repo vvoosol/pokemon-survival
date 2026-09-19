@@ -43,7 +43,8 @@ window.SurvivorRPG.StorySpawnSystem = class StorySpawnSystem extends window.Surv
     const R = window.SurvivorRPG, id = this.pickWeighted(zone.spawnTable);
     const entry = zone.spawnTable.find(p => p.speciesId === id);
     const level = entry.minLevel + Math.floor(Math.random() * (entry.maxLevel - entry.minLevel + 1));
-    const data = {...this.scaledWildData(R.PokemonData[id], level), radius: 10, scale: .7, aggroRadius: 220};
+    const species = this.resolveSpeciesForLevel(R.PokemonData[id], level);
+    const data = {...this.scaledWildData(species, level), radius: 10, scale: .7, aggroRadius: 220};
     for (let attempt = 0; attempt < 40; attempt++) {
       const tile = zone.tiles[Math.floor(Math.random() * zone.tiles.length)];
       const x = tile[0] * 32 + 16, y = tile[1] * 32 + 16;

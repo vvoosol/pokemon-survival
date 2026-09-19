@@ -32,9 +32,10 @@ window.SurvivorRPG.SpawnSystem = class SpawnSystem {
 
   spawnOne(zone) {
     const speciesId = this.pickWeighted(zone.spawnTable);
-    const base = window.SurvivorRPG.PokemonData[speciesId];
+    const selected = window.SurvivorRPG.PokemonData[speciesId];
     const entry = zone.spawnTable.find(item => (item.speciesId || item.pokemon) === speciesId);
-    const level = Math.round(this.randomRange(Math.max(zone.levelMin || base.level, entry?.minLevel || 1), zone.levelMax || base.level));
+    const level = Math.round(this.randomRange(Math.max(zone.levelMin || selected.level, entry?.minLevel || 1), zone.levelMax || selected.level));
+    const base = this.resolveSpeciesForLevel(selected, level);
     const data = this.scaledWildData(base, level, zone.spawnStyle);
     const margin = 44;
     for(let attempt=0;attempt<40;attempt++) {
@@ -44,6 +45,47 @@ window.SurvivorRPG.SpawnSystem = class SpawnSystem {
       return new window.SurvivorRPG.WildPokemon(data, x, y, zone.id);
     }
     return null;
+  }
+
+  resolveSpeciesForLevel(selected, level) {
+    const all = window.SurvivorRPG.PokemonData;
+    if (!selected || !Number.isFinite(level)) return selected;
+
+    const parentOf = (speciesId) => {
+      for (const parent of Object.values(all)) {
+        const evolution = parent.evolutions?.find(item => item.target === speciesId && item.method === "level");
+        if (evolution) return { parent, evolution };
+      }
+      return null;
+    };
+
+    // Rebuild the selected species' level-evolution lineage from its earliest form.
+    // This also downgrades an evolved species if a table lists it below its true evolution level.
+    const path = [];
+    let cursor = selected;
+    for (let guard = 0; guard < 8; guard++) {
+      const link = parentOf(cursor.id);
+      if (!link) break;
+      path.unshift({ from: link.parent, evolution: link.evolution });
+      cursor = link.parent;
+    }
+
+    let resolved = cursor;
+    for (const step of path) {
+      if (level < Number(step.evolution.level)) return resolved;
+      resolved = all[step.evolution.target] || resolved;
+    }
+
+    // If the rolled species is an earlier form at a high enough level, advance it
+    // to the stage it would already have reached at that level.
+    for (let guard = 0; guard < 8; guard++) {
+      const eligible = (resolved.evolutions || []).filter(item =>
+        item.method === "level" && Number(item.level) <= level && all[item.target]);
+      if (!eligible.length) break;
+      const evolution = eligible[Math.floor(Math.random() * eligible.length)];
+      resolved = all[evolution.target];
+    }
+    return resolved;
   }
 
   scaledWildData(base, level, spawnStyle = "NORMAL") {

@@ -64,6 +64,16 @@ test('story grass encounters use a broad randomized level pool instead of the na
   assert.ok(table.every(entry=>entry.weight===1 && entry.minLevel>=5 && entry.maxLevel===10));
 });
 
+test('wild species always matches the evolution stage allowed by its rolled level', () => {
+  const spawn = new R.SpawnSystem({spawnZones:[]});
+  assert.equal(spawn.resolveSpeciesForLevel(R.PokemonData.pidgey,17).id,'pidgey');
+  assert.equal(spawn.resolveSpeciesForLevel(R.PokemonData.pidgey,18).id,'pidgeotto');
+  assert.equal(spawn.resolveSpeciesForLevel(R.PokemonData.pidgey,35).id,'pidgeotto');
+  assert.equal(spawn.resolveSpeciesForLevel(R.PokemonData.pidgey,36).id,'pidgeot');
+  assert.equal(spawn.resolveSpeciesForLevel(R.PokemonData.pidgeot,17).id,'pidgey');
+  assert.equal(spawn.resolveSpeciesForLevel(R.PokemonData.pidgeot,18).id,'pidgeotto');
+});
+
 test('hero choices are only unknown compatible TM moves, no ability or tera choices', () => {
   for (const species of Object.values(R.PokemonData)) {
     const p=make(species.id), used=new Set();
