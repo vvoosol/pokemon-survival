@@ -1,10 +1,38 @@
 window.SurvivorRPG = window.SurvivorRPG || {};
 window.SurvivorRPG.StoryState = {
-  create(start = {map: 1, x: 9, y: 7}) {
+  createWildLevelProfile(random = Math.random) {
+    const shift = () => Math.max(-1, Math.min(1, Math.floor(Number(random()) * 3) - 1));
+    const profile = {};
+    for (const [key, min, max] of [
+      ['opening', 2, 6],
+      ['preBrock', 5, 11],
+      ['postBrock', 10, 19],
+      ['postMisty', 17, 26],
+      ['postSurge', 23, 30]
+    ]) {
+      const offset = shift();
+      profile[key] = {min: Math.max(2, min + offset), max: Math.max(2, max + offset)};
+    }
+    return profile;
+  },
+  ensureWildLevelProfile(state) {
+    if (!state.wildLevelProfile) state.wildLevelProfile = this.createWildLevelProfile();
+    return state.wildLevelProfile;
+  },
+  wildLevelRange(state, mapId = state.mapId) {
+    const profile = this.ensureWildLevelProfile(state);
+    const cleared = state.gymRewards.length;
+    if (cleared >= 3) return profile.postSurge;
+    if (cleared >= 2) return profile.postMisty;
+    if (cleared >= 1) return profile.postBrock;
+    return [2, 3, 4].includes(Number(mapId)) ? profile.opening : profile.preBrock;
+  },
+  create(start = {map: 1, x: 9, y: 7}, random = Math.random) {
     return {version: 1, mapId: start.map, x: start.x, y: start.y, direction: 2,
       switches: {}, variables: {}, selfSwitches: {}, badges: [false, false, false],
       keyItems: {}, gymRewards: [], playTime: 0, expShareEnabled: false, activeCount: 1,
-      playerName: 'Red', rivalName: 'Azul', eventCheckpoint: null};
+      playerName: 'Red', rivalName: 'Azul', eventCheckpoint: null,
+      wildLevelProfile: this.createWildLevelProfile(random)};
   },
   validate(state) {
     const fail = () => { throw Error('Invalid story state'); };
@@ -25,6 +53,14 @@ window.SurvivorRPG.StoryState = {
       state.gymRewards.some((n, i) => n !== i + 1 || !state.badges[n - 1])) fail();
     if (![1, 2, 3].includes(state.activeCount) || state.activeCount > this.maxActive(state)) fail();
     if (typeof state.expShareEnabled !== 'boolean' || state.expShareEnabled && !state.gymRewards.includes(1)) fail();
+    if (state.wildLevelProfile !== undefined) {
+      if (!record(state.wildLevelProfile)) fail();
+      for (const name of ['opening', 'preBrock', 'postBrock', 'postMisty', 'postSurge']) {
+        const range = state.wildLevelProfile[name];
+        if (!record(range) || !Number.isInteger(range.min) || !Number.isInteger(range.max) ||
+          range.min < 2 || range.max < range.min || range.max > 31) fail();
+      }
+    }
     const point = p => record(p) && [p.x, p.y].every(Number.isFinite) &&
       (p.direction === undefined || [2, 4, 6, 8].includes(p.direction));
     if (state.mapEvents !== undefined) {

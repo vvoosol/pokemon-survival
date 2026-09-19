@@ -125,6 +125,23 @@ test('outdoor gym proxy executes the original leader event without entering the 
   assert.deepEqual(g.story.gymRewards, [1]);
 });
 
+test('outdoor gym route stays exterior and preserves progression through the third badge', async () => {
+  const g = game();
+  g.story.switches[347] = true;
+  const route = [[9, 42, 16], [15, 57, 11], [19, 56, 7]];
+  for (const [index, [visibleMap, sourceMap, eventId]] of route.entries()) {
+    sourceProxy(g, visibleMap, sourceMap);
+    await g.runStoryProxy(sourceMap, eventId, undefined, {intro: '체육관 승부를 시작하자!'});
+    if (g.storyError) throw g.storyError;
+    assert.equal(g.story.mapId, visibleMap);
+    assert.equal(g.story.badges[index], true);
+    assert.deepEqual(g.story.gymRewards, Array.from({length: index + 1}, (_, i) => i + 1));
+  }
+  assert.equal(g.items.expShare, true);
+  assert.equal(g.items.doubleBattle, true);
+  assert.equal(g.items.tripleBattle, true);
+});
+
 test('fresh outdoor starter sets the native progression flags', async () => {
   const g = game();
   g.partyPokemon = [];
@@ -144,10 +161,12 @@ test('outdoor story plans block the configured indoor entrances and localize map
   const g = Object.create(R.StoryGame.prototype);
   g.story = {mapId: 2};
   assert.deepEqual(g.storyOutdoorPlan(2).blocked, [5, 6, 7, 8, 11, 12, 13, 14]);
+  assert.deepEqual(g.storyOutdoorPlan(5).blocked, [11]);
   assert.deepEqual(g.storyOutdoorPlan(9).blocked, [35, 36, 37]);
   assert.deepEqual(g.storyOutdoorPlan(15).blocked, [68, 69, 70, 71, 72]);
   assert.deepEqual(g.storyOutdoorPlan(19).blocked, [24, 33, 34, 35, 36]);
   assert.equal(g.storyMapName('Pueblo Paleta'), '태초마을');
+  assert.equal(g.storyMapName('Ruta 22'), '22번도로');
   assert.equal(g.storyMapName('Ciudad Plateada'), '회색시티');
   assert.equal(g.storyMapName('Ciudad Celeste'), '블루시티');
   assert.equal(g.storyMapName('Ciudad Carmín'), '갈색시티');

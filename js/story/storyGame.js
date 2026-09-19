@@ -23,6 +23,20 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     this.storyFailedEvent = null;
   }
   reset() { super.reset({starterPending: true}); }
+  resetAtProfessor() {
+    if (this.menuView !== 'resetConfirm') return false;
+    localStorage.removeItem(this.store.key);
+    localStorage.removeItem(this.store.backup);
+    if (this.journal) {
+      this.journal.awaitingStarter = false;
+      this.store.writeJournal(this.journal);
+    }
+    const url = new URL(location.href);
+    url.searchParams.set('mode', 'story');
+    url.hash = '';
+    location.assign(url.href);
+    return true;
+  }
   async init() {
     this.storyData = await window.SurvivorRPG.loadStoryJSON('assets/story/battle-data.json');
     // Keep curated Korean names and expansion learnsets when the source overlaps.
@@ -493,7 +507,9 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     }
     this.map = {id: `story_${id}`, name: this.storyMapName(map.name), width: map.width * 32, height: map.height * 32,
       tileSize: 32, playerStart: {x: (x + .5) * 32, y: (y + .5) * 32}, colliders, npcs: [], objects: [], spawnZones: []};
-    this.map.spawnZones = window.SurvivorRPG.StorySpawnSystem.zones(this.storyRenderer, this.storyData.encounters[id] || {}, !!this.story.switches[64]);
+    const wildLevelRange = window.SurvivorRPG.StoryState.wildLevelRange(this.story, id);
+    this.map.spawnZones = window.SurvivorRPG.StorySpawnSystem.zones(this.storyRenderer,
+      this.storyData.encounters[id] || {}, !!this.story.switches[64], wildLevelRange);
     this.currentMapId = this.map.id; this.currentHuntingArea = null; this.survival = null;
     this.camera.world = this.map; this.combatSystem.world = this.map;
     this.spawnSystem.setMap(this.map); this.combatSystem.clear(); this.partyBattle.clear(); this.enemies = [];
@@ -517,6 +533,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
       4: {blocked: [44], proxies: [
         {id: 'viridian-joy', label: '간호순', x: 52, y: 37, sourceMapId: 31, eventId: 6, choicePrompt: '포켓몬을 치료할까요?'}
       ]},
+      5: {blocked: [11], proxies: []},
       9: {blocked: [35, 36, 37], proxies: [
         {id: 'pewter-joy', label: '간호순', x: 24, y: 46, sourceMapId: 36, eventId: 7, choicePrompt: '포켓몬을 치료할까요?'},
         {id: 'brock', label: '브록', x: 23, y: 27, sourceMapId: 42, eventId: 16, intro: '브록: 회색시티 체육관 승부를 시작하자!'}
@@ -541,7 +558,8 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
   }
   storyMapName(name) {
     const names = {'Pueblo Paleta': '태초마을', 'Ciudad Verde': '상록시티', 'Ciudad Plateada': '회색시티',
-      'Ciudad Celeste': '블루시티', 'Ciudad Carmín': '갈색시티', 'Ruta 1': '1번도로', 'Ruta 24': '24번도로', 'Ruta 25 Sur': '25번도로 남쪽'};
+      'Ciudad Celeste': '블루시티', 'Ciudad Carmín': '갈색시티', 'Ruta 1': '1번도로', 'Ruta 22': '22번도로',
+      'Ruta 24': '24번도로', 'Ruta 25 Sur': '25번도로 남쪽'};
     return names[name] || name;
   }
   async loadStorySourceMap(id) {
@@ -897,6 +915,9 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
   }
   receiveFieldItem(sourceId, amount = 1) {
     if (!Number.isInteger(amount) || amount < 1) throw Error(`Invalid field item amount: ${amount}`);
+    const source = this.storyData.items[sourceId];
+    if (source && String(source.Flags || '').split(',').map(flag => flag.trim()).includes('KeyItem'))
+      return this.receiveStoryItem(sourceId, amount);
     const hash = [...String(sourceId)].reduce((sum, char) => sum + char.charCodeAt(0), 0);
     return this.receiveStoryItem(hash % 2 ? 'POKEBALL' : 'POTION', amount);
   }
@@ -965,7 +986,9 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (!data) return false;
     this.storyBusy = true;
     try {
-      this.story = JSON.parse(JSON.stringify(data.story)); this.interpreter.state = this.story;
+      this.story = JSON.parse(JSON.stringify(data.story));
+      window.SurvivorRPG.StoryState.ensureWildLevelProfile(this.story);
+      this.interpreter.state = this.story;
       await this.transferStory(data.story.mapId, data.story.x, data.story.y, data.story.direction);
       if (data.ownedPokemon.length) {
         this.maps[this.map.id] = this.map;

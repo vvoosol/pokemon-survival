@@ -376,9 +376,9 @@ window.SurvivorRPG.UIManager = class UIManager {
         <button class="menu-option" data-change data-selectable>${game.awaitingStarter ? '파트너 받기' : '변경하기'}</button>
         <button class="menu-option" data-back data-selectable>취소</button>`;
     } else {
-      content = `<p class="professor-notice">새 모험을 시작할까요?<br>파티·재화·구매한 배틀 모드는 초기화됩니다. 도감·연구 업적은 보존됩니다.</p>
+      content = `<p class="professor-notice">${game.story ? '스토리를 오박사부터 새로 시작할까요?<br>스토리 진행·파티·재화는 초기화되고 야생 포켓몬 레벨 구성도 새로 정해집니다. 도감·연구 기록은 보존됩니다.' : '새 모험을 시작할까요?<br>파티·재화·구매한 배틀 모드는 초기화됩니다. 도감·연구 업적은 보존됩니다.'}</p>
         <button class="menu-option" data-back data-selectable>취소</button>
-        <button class="menu-option" data-reset data-selectable>새 파트너로 시작</button>`;
+        <button class="menu-option" data-reset data-selectable>${game.story ? '오박사부터 새로 시작' : '새 파트너로 시작'}</button>`;
     }
     this.menuRoot.innerHTML = `<section class="compact-screen"><div class="menu-title">오박사</div><div class="menu-list">${content}</div></section>`;
     this.menuRoot.dataset.columns = '1';
@@ -661,12 +661,14 @@ window.SurvivorRPG.UIManager = class UIManager {
         <label class="menu-option">배경 음악 <input aria-label="배경 음악" data-setting="music" data-selectable type="range" min="0" max="100" step="5" value="${Math.round(s.music*100)}"></label>
         <label class="menu-option">효과음 <input aria-label="효과음" data-setting="effects" data-selectable type="range" min="0" max="100" step="5" value="${Math.round(s.effects*100)}"></label>
         <label class="menu-option"><input data-setting="reducedEffects" data-selectable type="checkbox" ${s.reducedEffects?'checked':''}> 전투 번쩍임 줄이기</label>
+        ${game.story ? '<button class="menu-action" data-action="newStory" data-selectable>스토리 새로 시작</button>' : ''}
         <button class="menu-action" data-action="opening" data-selectable>처음 오프닝으로 돌아가기</button>
         <small>진행 상황을 저장하고 모드 선택 화면으로 돌아갑니다.</small>
         <button class="menu-action" data-action="back" data-selectable>뒤로</button>
       </div></section>`;
     this.menuRoot.dataset.columns='1';
     this.menuRoot.querySelectorAll('[data-setting]').forEach(input=>input.addEventListener('input',()=>game.assets.configure(input.dataset.setting,input.type==='checkbox'?input.checked:input.value/100)));
+    this.bindMenuButton('[data-action="newStory"]',()=>game.openMenuView('resetConfirm'));
     this.bindMenuButton('[data-action="opening"]',()=>game.returnToOpening());
     this.bindMenuButton('[data-action="back"]',()=>game.backMenu(),'cancel');
   }

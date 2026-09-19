@@ -51,12 +51,14 @@ window.SurvivorRPG.StorySpawnSystem = class StorySpawnSystem extends window.Surv
     }
     return null;
   }
-  static zones(renderer, encounters, classic) {
+  static zones(renderer, encounters, classic, levelRange = null) {
     const table = encounters[(classic ? 'LandClassic' : 'Land')] || encounters.Land ||
       encounters[(classic ? 'CaveClassic' : 'Cave')] || encounters.Cave;
     if (!table?.length) return [];
-    const minLevel = Math.min(...table.map(p => Number(p.minLevel) || 1));
-    const maxLevel = Math.max(...table.map(p => Number(p.maxLevel) || minLevel));
+    const sourceMin = Math.min(...table.map(p => Number(p.minLevel) || 1));
+    const sourceMax = Math.max(...table.map(p => Number(p.maxLevel) || sourceMin));
+    const minLevel = Number.isInteger(levelRange?.min) ? levelRange.min : sourceMin;
+    const maxLevel = Number.isInteger(levelRange?.max) ? levelRange.max : sourceMax;
     const candidates = Object.values(window.SurvivorRPG.PokemonData).filter(species => {
       const start = Number(species.level) || 1;
       return start <= maxLevel && (!species.generation || [2,3,4,5,6].includes(species.generation));
