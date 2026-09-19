@@ -2,6 +2,8 @@ window.SurvivorRPG = window.SurvivorRPG || {};
 
 (function defineMoveVisualAdapter() {
   // Anil BattleAnimationPlayer.rb uses five 192px columns. Timelines are adapted for real time.
+  // Keep small ranged effects readable without changing their combat hitboxes.
+  const minimumRangedVisualSize = 44;
   const sheets = {
     impact: ['Tackle_B.png', [0], [0], '#fff2ae'],
     scratch: ['Scratch + Shadow Claw.png', [0], [0], '#fff2ae'],
@@ -88,6 +90,13 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     getProjectileVisual(move) { return this.getMoveAnimation(move); },
     getHitAnimation(move) { return this.getMoveAnimation(move); },
     getMoveSound() { return 'hit'; },
+    getDrawSize(move, size, impact = false) {
+      if (!Number.isFinite(size)) return size;
+      if (impact) return Math.max(size, minimumRangedVisualSize);
+      if (['PROJECTILE', 'MULTI_PROJECTILE', 'AREA_TARGET', 'BEAM'].includes(move?.behavior))
+        return Math.max(size, minimumRangedVisualSize);
+      return size;
+    },
     draw(ctx, assets, move, x, y, size, age, angle = 0, impact = false) {
       const visual = this.getMoveAnimation(move);
       const frames = impact ? visual.hitFrames : visual.frames;
@@ -95,7 +104,8 @@ window.SurvivorRPG = window.SurvivorRPG || {};
       const bounds = this.bounds.get(visual.file + ':' + frame);
       const image = assets.image('move:' + visual.file);
       if (!image || !bounds) return;
-      const scale = size / Math.max(bounds.width, bounds.height);
+      const drawSize = this.getDrawSize(move, size, impact);
+      const scale = drawSize / Math.max(bounds.width, bounds.height);
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(angle);
