@@ -16,6 +16,11 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     this.proxyContext = null;
     this.erasedStoryEvents = new Set();
     this.storyPictures = new Map();
+    this.storyRecoverySnapshot = null;
+    this.storyRecoveryFailure = null;
+    this.storyPreviousMapState = null;
+    this.storyEntryPoint = null;
+    this.storyFailedEvent = null;
   }
   reset() { super.reset({starterPending: true}); }
   async init() {
@@ -48,7 +53,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     const text = document.createElement('div'), choices = document.createElement('div');
     choices.className = 'story-dialog-choices'; box.append(text, choices);
     document.getElementById('screenFrame').append(box);
-    this.storyDialog = {box, text, choices, resolve: null, selected: 0, buttons: []};
+    this.storyDialog = {box, text, choices, resolve: null, selected: 0, buttons: [], navCooldown: 0, recovery: false};
   }
   storyText(text) {
     const translated = this.translateStoryText(String(text));
@@ -390,10 +395,11 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
       .replace(/Kanto/gi, '관동')
       .replace(/Surge/gi, '마티스').replace(/Brock/gi, '브록').replace(/Misty/gi, '이슬');
   }
-  async askStory(text, options = ['Z'], cancel = 0) {
+  async askStory(text, options = ['Z'], cancel = 0, recovery = false) {
     const d = this.storyDialog;
     this.input.switchPressed = this.input.ballPressed = this.input.menuPressed = false;
     d.text.textContent = this.storyText(text); d.choices.replaceChildren(); d.selected = 0; d.cancel = cancel;
+    d.navCooldown = 0; d.recovery = recovery;
     d.buttons = options.map((label, index) => {
       const button = document.createElement('button'); button.type = 'button'; button.textContent = this.storyText(label);
       let armed = false;
@@ -402,17 +408,80 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
       button.addEventListener('click', event => { if (armed || event.detail === 0) this.answerStory(index); armed = false; });
       d.choices.append(button); return button;
     });
+    this.selectStoryChoice(0);
     d.box.hidden = false;
     return new Promise(resolve => { d.resolve = resolve; });
+  }
+  selectStoryChoice(index) {
+    const d = this.storyDialog;
+    if (!d?.buttons?.length) return;
+    d.selected = (index + d.buttons.length) % d.buttons.length;
+    d.buttons.forEach((button, i) => {
+      button.classList.toggle('is-selected', i === d.selected);
+      button.setAttribute('aria-selected', String(i === d.selected));
+    });
   }
   answerStory(index) {
     const d = this.storyDialog;
     if (!d.resolve) return;
     const resolve = d.resolve; d.resolve = null; d.box.hidden = true;
-    this.input.switchPressed = this.input.ballPressed = false;
+    d.recovery = false; d.navCooldown = 0;
+    this.input.switchPressed = this.input.ballPressed = this.input.menuPressed = false;
     resolve(index);
   }
+  captureStorySafeState() {
+    if (!this.storyRenderer || !this.story?.mapId) return null;
+    const actor = this.activePokemon || this.trainer;
+    const direction = ({down: 2, left: 4, right: 6, up: 8})[actor.direction] || this.story.direction || 2;
+    const snapshot = JSON.parse(JSON.stringify(this.story));
+    snapshot.mapId = this.story.mapId;
+    snapshot.x = Math.floor(actor.x / 32); snapshot.y = Math.floor(actor.y / 32); snapshot.direction = direction;
+    snapshot.eventCheckpoint = null;
+    snapshot.mapEvents = {mapId: snapshot.mapId, positions: structuredClone(this.storyPositions), erased: [...this.erasedStoryEvents]};
+    return {story: snapshot, mapId: snapshot.mapId, x: snapshot.x, y: snapshot.y, direction,
+      positions: structuredClone(this.storyPositions), erased: [...this.erasedStoryEvents]};
+  }
+  async recoverStoryState() {
+    const snapshot = this.storyRecoverySnapshot;
+    if (!snapshot || this.recovering) return false;
+    this.recovering = true; this.storyBusy = true;
+    try {
+      this.story = JSON.parse(JSON.stringify(snapshot.story));
+      this.story.eventCheckpoint = null; this.interpreter.state = this.story;
+      this.interpreter.error = null; this.interpreter.frames = []; this.interpreter.running = false;
+      this.storyError = null; this.proxyContext = null; this.storyBattle = null; this.gymArena = null;
+      this.combatSystem.clear(); this.partyBattle.clear(); this.enemies = [];
+      this.levelUpQueue = []; this.currentLevelEvent = this.currentMoveLearn = null;
+      this.transition = null; this.captureTarget = null; this.captureSystem.lockedTarget = null;
+      this.ui.hideLevelChoices(); this.ui.hideGameMenu(); this.menuOpen = false;
+      for (const pokemon of this.partyPokemon) pokemon.inField = false;
+      await this.transferStory(snapshot.mapId, snapshot.x, snapshot.y, snapshot.direction);
+      this.storyPositions = structuredClone(snapshot.positions); this.erasedStoryEvents = new Set(snapshot.erased);
+      this.story.mapEvents = {mapId: snapshot.mapId, positions: structuredClone(snapshot.positions), erased: [...snapshot.erased]};
+      this.mode = 'trainer'; this.activePokemon = null; this.camera.follow(this.trainer, 1);
+      this.storyFailedEvent = this.storyRecoveryFailure ? {...this.storyRecoveryFailure, x: snapshot.x, y: snapshot.y} : null;
+      this.storyRecoverySnapshot = null; this.storyRecoveryFailure = null;
+      this.storyPreviousMapState = null; this.storyEntryPoint = null;
+      this.message('미구현 구간을 벗어나 이전 위치로 돌아왔습니다.', 3);
+      return true;
+    } catch (error) {
+      this.storyError = error; this.message(`복구 오류: ${error.message}`, 4); return false;
+    } finally { this.recovering = false; this.storyBusy = false; }
+  }
+  async handleStoryFailure(error, snapshot, failure = null) {
+    this.storyError = error;
+    const actor = this.activePokemon || this.trainer;
+    const atEntry = this.storyEntryPoint?.mapId === this.story.mapId &&
+      Math.floor(actor.x / 32) === this.storyEntryPoint.x && Math.floor(actor.y / 32) === this.storyEntryPoint.y;
+    this.storyRecoverySnapshot = failure && atEntry && this.storyPreviousMapState ? this.storyPreviousMapState : snapshot;
+    this.storyRecoveryFailure = this.storyRecoverySnapshot === snapshot ? failure : null;
+    await this.askStory(`스토리 미구현 구간입니다.\nX 또는 뒤로가기를 누르면 이전 위치로 돌아갑니다.\n${error.message}`,
+      ['이전 위치로 돌아가기'], 0, true);
+    await this.recoverStoryState();
+  }
   async transferStory(id, x, y, direction = 2) {
+    if (!this.recovering && this.storyRenderer?.map && this.story?.mapId && id !== this.story.mapId)
+      this.storyPreviousMapState = this.captureStorySafeState();
     const map = await this.storyRenderer.load(id);
     const colliders = [], tileset = this.storyRenderer.tileset;
     for (let ty = 0; ty < map.height; ty++) for (let tx = 0; tx < map.width; tx++) {
@@ -433,6 +502,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     this.trainer.direction = ({2: 'down', 4: 'left', 6: 'right', 8: 'up'})[direction] || this.trainer.direction;
     this.mode = 'trainer'; this.activePokemon = null;
     this.story.mapId = id; this.story.x = x; this.story.y = y; this.story.direction = direction || 2;
+    this.storyEntryPoint = {mapId: id, x, y};
     this.camera.x = this.trainer.x - this.camera.width / 2; this.camera.y = this.trainer.y - this.camera.height / 2; this.camera.clamp();
     this.autoruns.clear(); this.storyPositions = {}; this.erasedStoryEvents.clear();
     if (this.story.mapEvents?.mapId !== id) delete this.story.mapEvents;
@@ -670,13 +740,15 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
   }
   async runStoryEvent(event, pageIndex) {
     if (this.storyBusy || this.storyError || this.storyBattle || !['trainer', 'pokemon'].includes(this.mode)) return;
+    const snapshot = this.captureStorySafeState();
     this.storyBusy = true;
     try { await this.interpreter.run(this.story.mapId, event, pageIndex); this.applyStoryGymRewards(); }
-    catch (error) { this.storyError = error; await this.askStory(`스토리 이식 미완료\n${error.message}`); }
+    catch (error) { await this.handleStoryFailure(error, snapshot, {mapId: snapshot?.mapId, eventId: event.id, pageIndex}); }
     finally { this.storyBusy = false; }
   }
   async runStoryProxy(sourceMapId, eventId, pageIndex, proxy = {}) {
     if (this.storyBusy || this.storyError || this.storyBattle || !['trainer', 'pokemon'].includes(this.mode)) return;
+    const snapshot = this.captureStorySafeState();
     const sourceMap = await this.loadStorySourceMap(sourceMapId), event = sourceMap.events[eventId];
     if (!event) throw Error(`Story proxy event missing: ${sourceMapId}:${eventId}`);
     const selectedPage = pageIndex ?? window.SurvivorRPG.StoryState.pageIndex(event, this.story, sourceMapId);
@@ -686,7 +758,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     try {
       if (proxy.intro) await this.askStory(proxy.intro);
       await this.interpreter.run(sourceMapId, event, selectedPage); this.applyStoryGymRewards();
-    } catch (error) { this.storyError = error; await this.askStory(`스토리 이식 미완료\n${error.message}`); }
+    } catch (error) { await this.handleStoryFailure(error, snapshot); }
     finally { this.proxyContext = null; this.storyBusy = false; }
   }
   async chooseOutdoorStarter() {
@@ -710,18 +782,35 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (!this.storyRenderer || this.suspended) return;
     const d = this.storyDialog;
     if (d?.resolve) {
+      d.navCooldown = Math.max(0, (d.navCooldown || 0) - dt);
+      const vector = this.input.movementVector();
+      if (d.buttons.length > 1 && d.navCooldown <= 0 && Math.max(Math.abs(vector.x), Math.abs(vector.y)) > .55) {
+        const delta = Math.abs(vector.y) >= Math.abs(vector.x) ? Math.sign(vector.y) : Math.sign(vector.x);
+        this.selectStoryChoice(d.selected + delta); d.navCooldown = .18;
+      } else if (Math.max(Math.abs(vector.x), Math.abs(vector.y)) < .2) d.navCooldown = 0;
       if (this.input.consumeSwitch()) this.answerStory(d.selected);
-      if (this.input.consumeBall() && d.cancel) this.answerStory(-1);
+      const back = this.input.consumeBall() || this.input.consumeMenu();
+      if (back && (d.recovery || d.cancel)) this.answerStory(-1);
       const index = this.input.consumeChoiceIndex(); if (index !== null && d.buttons[index]) this.answerStory(index);
       return;
     }
     if (this.storyBattle) { super.update(dt); this.storyBattle?.update(); return; }
-    if (this.storyBusy || this.storyError) return;
+    if (this.storyError) {
+      if (this.input.consumeBall() || this.input.consumeMenu() || this.input.consumeSwitch()) this.recoverStoryState();
+      return;
+    }
+    if (this.storyBusy) return;
     if (this.menuOpen) { super.update(dt); return; }
     if (this.mode === 'gameOver') { this.restartAfterDefeat(); return; }
     document.getElementById('gameRoot').dataset.storyNoParty = String(this.partyPokemon.length === 0);
+    const actor = this.activePokemon || this.trainer, tx = Math.floor(actor.x / 32), ty = Math.floor(actor.y / 32);
+    if (this.storyPreviousMapState && this.storyEntryPoint?.mapId === this.story.mapId &&
+      (tx !== this.storyEntryPoint.x || ty !== this.storyEntryPoint.y)) { this.storyPreviousMapState = null; this.storyEntryPoint = null; }
+    if (this.storyFailedEvent && (this.storyFailedEvent.mapId !== this.story.mapId || tx !== this.storyFailedEvent.x || ty !== this.storyFailedEvent.y))
+      this.storyFailedEvent = null;
     const blocked = new Set(this.storyOutdoorPlan().blocked);
-    const active = this.storyRenderer.activeEvents(this.story).filter(({event}) => !this.erasedStoryEvents.has(event.id) && !blocked.has(event.id));
+    const active = this.storyRenderer.activeEvents(this.story).filter(({event}) => !this.erasedStoryEvents.has(event.id) && !blocked.has(event.id) &&
+      !(this.storyFailedEvent?.mapId === this.story.mapId && this.storyFailedEvent.eventId === event.id));
     const autorun = active.find(({event, pageIndex, page}) => page.trigger === 3 && !this.autoruns.has(`${event.id}:${pageIndex}`));
     if (autorun) { this.autoruns.add(`${autorun.event.id}:${autorun.pageIndex}`); this.runStoryEvent(autorun.event, autorun.pageIndex); return; }
     if (this.story.mapId === 1 && this.story.switches[179] && !this.story.switches[180]) {
@@ -737,7 +826,6 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
       }); return;
     }
     this.story.playTime += dt;
-    const actor = this.activePokemon || this.trainer, tx = Math.floor(actor.x / 32), ty = Math.floor(actor.y / 32);
     const touching = active.find(({event, page}) => [1, 2].includes(page.trigger) && this.storyEventContains(event, tx, ty) && page.list.some(c => c.code !== 0));
     if (touching) { this.runStoryEvent(touching.event, touching.pageIndex); return; }
     const vector = this.input.movementVector();
