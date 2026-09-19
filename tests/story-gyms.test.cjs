@@ -2,7 +2,7 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
 global.window = {SurvivorRPG: {}};
-for (const name of ['story/storyState', 'story/eventInterpreter', 'game', 'story/storyGame', 'systems/partyBattleSystem'])
+for (const name of ['story/storyState', 'story/eventInterpreter', 'game', 'story/storyGame', 'story/storyTravel', 'systems/partyBattleSystem'])
   vm.runInThisContext(fs.readFileSync(path.join(__dirname, '../js', name + '.js'), 'utf8'));
 const R = window.SurvivorRPG;
 const gyms = [[42, 16], [57, 11], [56, 7]];
@@ -155,6 +155,95 @@ test('fresh outdoor starter sets the native progression flags', async () => {
   assert.equal(g.story.switches[347], true);
   assert.equal(g.story.variables[56], 0);
   assert.equal(g.story.variables[55], 4);
+});
+
+test('fresh story locks Pallet exits until a starter is received and gives a clear objective', async () => {
+  const g = game();
+  g.partyPokemon = [];
+  g.story.mapId = 2;
+  assert.equal(g.story.reachedViridian, false);
+  assert.match(g.storyObjective(), /오박사/);
+  for (const id of [1, 44, 45, 46]) assert.equal(g.isLockedPalletExit({id}), true);
+  assert.equal(g.isLockedPalletExit({id: 5}), false);
+  g.addStoryPokemon = id => { g.partyPokemon.push({speciesId: id.toLowerCase()}); };
+  g.askStory = async () => 0;
+  await g.chooseOutdoorStarter();
+  assert.equal(g.isLockedPalletExit({id: 1}), false);
+  assert.match(g.storyObjective(), /1번도로.*상록시티/);
+});
+
+test('first Viridian arrival becomes the healing checkpoint and shows the next route', async () => {
+  const g = game();
+  g.story.mapId = 3;
+  g.story.reachedViridian = false;
+  g.storyRenderer = {
+    map: null,
+    tileset: {passages: {values: [0]}, priorities: {values: [0]}},
+    load: async () => ({id: 4, name: 'Ciudad Verde', width: 1, height: 1, data: {z: 1}, events: {}}),
+    tileAt: () => 0
+  };
+  g.storyData = {encounters: {4: {}}};
+  g.camera = {world: null, width: 640, height: 480, x: 0, y: 0, clamp() {}};
+  g.combatSystem = {world: null, clear() {}};
+  g.spawnSystem = {setMap() {}};
+  g.partyBattle = {clear() {}};
+  g.autoruns = new Set(); g.erasedStoryEvents = new Set();
+  g.prepareStoryProxies = async () => {}; g.placeStoryNpcsAtDoors = () => {};
+  const messages = []; g.message = text => messages.push(text);
+  const originalSpawnSystem = R.StorySpawnSystem;
+  R.StorySpawnSystem = {zones: () => []};
+  try { await g.transferStory(4, 1, 1, 2); } finally { R.StorySpawnSystem = originalSpawnSystem; }
+  assert.equal(g.story.reachedViridian, true);
+  assert.deepEqual(g.story.healingSpot, {mapId: 4, x: 52, y: 38, direction: 2});
+  assert.equal(g.storyAutoSavePending, true);
+  assert.match(messages.at(-1), /상록시티.*2번도로.*상록숲/);
+});
+
+test('old saves infer Viridian progress and Poké Ball-shaped field pickups award Poké Balls', () => {
+  const g = game();
+  delete g.story.reachedViridian;
+  g.story.mapId = 9;
+  g.normalizeStoryMilestones();
+  assert.equal(g.story.reachedViridian, true);
+  assert.equal(g.storyMapName('Ruta 2 Norte'), '2번도로 북쪽');
+  assert.equal(g.storyMapName('Bosque Verde'), '상록숲');
+  let received;
+  g.receiveStoryItem = (id, amount) => (received = {id, amount});
+  g.storyRenderer = {map: source(9)};
+  g.receiveFieldItem('TM94', 2, {mapId: 9, eventId: 23, pageIndex: 0});
+  assert.deepEqual(received, {id: 'POKEBALL', amount: 2});
+});
+
+test('defeat returns to Oak before Viridian and to the Viridian checkpoint afterwards', async () => {
+  const originalMovement = R.MovementSystem;
+  R.MovementSystem = {safePosition: (_map, x, y) => ({x, y})};
+  try {
+    for (const reachedViridian of [false, true]) {
+      const g = game();
+      g.mode = 'gameOver'; g.story.reachedViridian = reachedViridian;
+      if (reachedViridian) g.story.healingSpot = {mapId: 4, x: 52, y: 38, direction: 2};
+      g.combatSystem = {clear() {}}; g.partyBattle = {clear() {}};
+      g.captureSystem = {lockedTarget: null};
+      g.ui = {hideLevelChoices() {}, hideGameMenu() {}};
+      g.camera = {follow() {}}; g.map = {};
+      g.trainer.radius = 10;
+      g.storyProxyNpcs = [];
+      let destination, healed = false, saved = false, message = '';
+      g.transferStory = async (mapId, x, y) => {
+        destination = {mapId, x, y};
+        g.story.mapId = mapId;
+        g.storyProxyNpcs = reachedViridian ? [{id: 'viridian-joy', x: 52, y: 37}] : [{id: 'oak-starter', x: 27, y: 30}];
+      };
+      g.healParty = () => { healed = true; };
+      g.saveGame = () => { saved = true; };
+      g.message = text => { message = text; };
+      assert.equal(await g.restartAfterDefeat(), true);
+      assert.deepEqual(destination, reachedViridian ? {mapId: 4, x: 52, y: 38} : {mapId: 2, x: 27, y: 31});
+      assert.equal(healed, true); assert.equal(saved, true); assert.equal(g.mode, 'trainer');
+      assert.match(message, reachedViridian ? /간호순/ : /오박사/);
+      if (!reachedViridian) assert.equal(g.story.healingSpot, undefined);
+    }
+  } finally { R.MovementSystem = originalMovement; }
 });
 
 test('outdoor story plans block the configured indoor entrances and localize map names', () => {

@@ -31,7 +31,7 @@ window.SurvivorRPG.StoryState = {
     return {version: 1, mapId: start.map, x: start.x, y: start.y, direction: 2,
       switches: {}, variables: {}, selfSwitches: {}, badges: [false, false, false],
       keyItems: {}, gymRewards: [], playTime: 0, expShareEnabled: false, activeCount: 1,
-      playerName: 'Red', rivalName: 'Azul', eventCheckpoint: null,
+      playerName: 'Red', rivalName: 'Azul', eventCheckpoint: null, reachedViridian: false,
       wildLevelProfile: this.createWildLevelProfile(random)};
   },
   validate(state) {
@@ -53,6 +53,7 @@ window.SurvivorRPG.StoryState = {
       state.gymRewards.some((n, i) => n !== i + 1 || !state.badges[n - 1])) fail();
     if (![1, 2, 3].includes(state.activeCount) || state.activeCount > this.maxActive(state)) fail();
     if (typeof state.expShareEnabled !== 'boolean' || state.expShareEnabled && !state.gymRewards.includes(1)) fail();
+    if (state.reachedViridian !== undefined && typeof state.reachedViridian !== 'boolean') fail();
     if (state.wildLevelProfile !== undefined) {
       if (!record(state.wildLevelProfile)) fail();
       for (const name of ['opening', 'preBrock', 'postBrock', 'postMisty', 'postSurge']) {

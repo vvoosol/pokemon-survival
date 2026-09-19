@@ -52,7 +52,14 @@ Object.assign(window.SurvivorRPG.StoryGame.prototype, {
     if (this.mode !== 'gameOver' || this.recovering) return false;
     this.recovering = true; this.storyBusy = true;
     try {
-      const center = await this.nearestStoryCenter();
+      let center;
+      if (!this.story.reachedViridian) {
+        center = {mapId: 2, npcId: 'oak-starter', x: 27, y: 31, professor: true};
+      } else if (this.story.healingSpot) {
+        center = {mapId: this.story.healingSpot.mapId, x: this.story.healingSpot.x, y: this.story.healingSpot.y};
+      } else {
+        center = {mapId: 4, npcId: 'viridian-joy', x: 52, y: 38};
+      }
       this.combatSystem.clear(); this.partyBattle.clear();
       this.levelUpQueue = []; this.currentLevelEvent = this.currentMoveLearn = null;
       this.transition = null; this.captureTarget = null; this.captureSystem.lockedTarget = null;
@@ -60,13 +67,16 @@ Object.assign(window.SurvivorRPG.StoryGame.prototype, {
       await this.transferStory(center.mapId, center.x, center.y, 2);
       const npc = this.storyProxyNpcs.find(p => p.id === center.npcId);
       const point = window.SurvivorRPG.MovementSystem.safePosition(this.map, ((npc?.x ?? center.x) + .5) * 32,
-        ((npc?.y ?? center.y) + 1.5) * 32, this.trainer.radius);
-      if (!point) throw Error('포켓몬센터 복귀 위치를 찾을 수 없습니다.');
+        ((npc ? npc.y + 1 : center.y) + .5) * 32, this.trainer.radius);
+      if (!point) throw Error('회복 위치를 찾을 수 없습니다.');
       Object.assign(this.trainer, point); this.healParty();
       this.mode = 'trainer'; this.activePokemon = null;
-      this.story.healingSpot = {mapId: center.mapId, x: Math.floor(point.x / 32), y: Math.floor(point.y / 32), direction: 2};
+      if (this.story.reachedViridian)
+        this.story.healingSpot = {mapId: center.mapId, x: Math.floor(point.x / 32), y: Math.floor(point.y / 32), direction: 2};
       this.camera.follow(this.trainer, 1);
-      this.message('간호순: 모두 회복했어요. 이어서 모험을 계속하세요!', 4);
+      this.message(center.professor
+        ? '오박사: 괜찮다. 포켓몬은 모두 회복시켜 두었단다. 다시 1번도로를 따라 상록시티로 가 보렴!'
+        : '간호순: 모두 회복했어요. 이어서 모험을 계속하세요!', 5);
       this.storyBusy = false; this.saveGame(true);
       return true;
     } catch (error) {

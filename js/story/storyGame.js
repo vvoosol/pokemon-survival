@@ -56,10 +56,14 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     this.pictures = new Map();
     this.createStoryDialog();
     this.interpreter = new window.SurvivorRPG.StoryEventInterpreter(this.story, this.storyHost());
-    const saved = this.store.read();
+    const saved = this.store.read(), freshStory = !saved;
     if (saved) await this.loadGame(saved.data);
     else await this.transferStory(2, 14, 16, 2);
     this.storyBusy = false;
+    if (freshStory) {
+      await this.askStory('모험을 시작하기 전에 오박사에게 가 보자.\n마을 남쪽 연구소 앞에서 기다리고 있다.');
+      this.showStoryObjective(6);
+    }
   }
   createStoryDialog() {
     const box = document.createElement('section'); box.className = 'story-dialog'; box.hidden = true;
@@ -494,6 +498,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     await this.recoverStoryState();
   }
   async transferStory(id, x, y, direction = 2) {
+    const previousMapId = Number(this.story?.mapId);
     if (!this.recovering && this.storyRenderer?.map && this.story?.mapId && id !== this.story.mapId)
       this.storyPreviousMapState = this.captureStorySafeState();
     const map = await this.storyRenderer.load(id);
@@ -524,6 +529,12 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (this.story.mapEvents?.mapId !== id) delete this.story.mapEvents;
     await this.prepareStoryProxies(id);
     this.placeStoryNpcsAtDoors();
+    if (id === 4 && !this.story.reachedViridian) {
+      this.story.reachedViridian = true;
+      this.story.healingSpot = {mapId: 4, x: 52, y: 38, direction: 2};
+      this.storyAutoSavePending = true;
+      this.message('상록시티에 도착했다! 이제 쓰러지면 포켓몬센터 앞에서 회복한다. 다음은 북쪽 2번도로와 상록숲이다.', 7);
+    } else if (!this.recovering && previousMapId !== id && this.partyPokemon?.length) this.showStoryObjective(5);
   }
   storyOutdoorPlan(mapId = this.story.mapId) {
     const plans = {
@@ -559,8 +570,33 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
   storyMapName(name) {
     const names = {'Pueblo Paleta': '태초마을', 'Ciudad Verde': '상록시티', 'Ciudad Plateada': '회색시티',
       'Ciudad Celeste': '블루시티', 'Ciudad Carmín': '갈색시티', 'Ruta 1': '1번도로', 'Ruta 22': '22번도로',
-      'Ruta 24': '24번도로', 'Ruta 25 Sur': '25번도로 남쪽'};
+      'Ruta 2 Sur': '2번도로 남쪽', 'Ruta 2 Norte': '2번도로 북쪽', 'Bosque Verde': '상록숲',
+      'Ruta 3': '3번도로', 'Monte Moon': '달맞이산', 'Monte Moon Exterior': '달맞이산 외부',
+      'Ruta 4': '4번도로', 'Ruta 5': '5번도로', 'Ruta 6': '6번도로', 'Ruta 9': '9번도로',
+      'Ruta 10 Norte': '10번도로 북쪽', 'Ruta 10 Sur': '10번도로 남쪽', 'Túnel Diglett': '디그다의굴',
+      'Túnel Roca': '돌산터널', 'Ruta 24': '24번도로', 'Ruta 25 Sur': '25번도로 남쪽'};
     return names[name] || name;
+  }
+  normalizeStoryMilestones() {
+    if (typeof this.story.reachedViridian !== 'boolean') {
+      const mapId = Number(this.story.mapId);
+      const healedMap = Number(this.story.healingSpot?.mapId || 0);
+      this.story.reachedViridian = mapId >= 4 || healedMap >= 4;
+    }
+  }
+  storyObjective() {
+    if (!this.partyPokemon?.length) return '목표: 마을 남쪽 연구소 앞의 오박사에게 가서 첫 포켓몬을 받자.';
+    if (!this.story.reachedViridian) return this.story.mapId === 2
+      ? '목표: 태초마을 북쪽 출구로 나가 1번도로를 따라 상록시티로 가자.'
+      : '목표: 1번도로를 따라 북쪽의 상록시티로 가자.';
+    if (!this.story.badges[0]) return '목표: 상록시티 북쪽 2번도로와 상록숲을 지나 회색시티의 브록에게 도전하자.';
+    if (!this.story.badges[1]) return '목표: 회색시티 동쪽 3번도로와 달맞이산을 지나 블루시티로 가자.';
+    if (!this.story.badges[2]) return '목표: 블루시티에서 남쪽 길을 따라 갈색시티로 향하자.';
+    return '목표: 세 번째 배지까지의 스토리를 완료했다.';
+  }
+  showStoryObjective(seconds = 5) { this.message(this.storyObjective(), seconds); }
+  isLockedPalletExit(event) {
+    return this.story.mapId === 2 && !this.partyPokemon.length && [1, 44, 45, 46].includes(event.id);
   }
   async loadStorySourceMap(id) {
     if (this.storyRenderer.map?.id === id) return this.storyRenderer.map;
@@ -696,7 +732,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     const badgeAnimation = text.match(/^renderBadgeAnimation\(([0-2])\)$/);
     if (badgeAnimation) { this.notifyProgress(`배지 ${Number(badgeAnimation[1]) + 1} 획득!`, 'reward'); return; }
     const fieldItem = text.match(/^pbItemBall\(:(\w+)(?:,\s*(\d+))?\)$/);
-    if (fieldItem) return this.receiveFieldItem(fieldItem[1], Number(fieldItem[2] || 1));
+    if (fieldItem) return this.receiveFieldItem(fieldItem[1], Number(fieldItem[2] || 1), frame);
     const item = text.match(/^pbReceiveItem\(:(\w+)(?:,\s*(\d+))?\)$/);
     if (item) return this.receiveStoryItem(item[1], Number(item[2] || 1));
     const keyItem = text.match(/^pbGetKeyItem\("(\w+)"\)$/);
@@ -758,6 +794,17 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
   }
   async runStoryEvent(event, pageIndex) {
     if (this.storyBusy || this.storyError || this.storyBattle || !['trainer', 'pokemon'].includes(this.mode)) return;
+    if (this.isLockedPalletExit(event)) {
+      this.storyBusy = true;
+      try {
+        const actor = this.activePokemon || this.trainer;
+        actor.y = Math.max(actor.y, 48);
+        this.camera.follow(actor, 1);
+        await this.askStory('아직 태초마을을 떠날 수 없다.\n먼저 마을 남쪽 연구소 앞의 오박사에게 가서 첫 포켓몬을 받자.');
+        this.showStoryObjective(6);
+      } finally { this.storyBusy = false; }
+      return;
+    }
     const snapshot = this.captureStorySafeState();
     this.storyBusy = true;
     try { await this.interpreter.run(this.story.mapId, event, pageIndex); this.applyStoryGymRewards(); }
@@ -788,7 +835,8 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
       this.addStoryPokemon(ids[choice], 5); this.story.switches[switches[choice]] = true;
       this.story.switches[347] = true;
       this.story.variables[56] = choice; this.story.variables[55] = 4;
-      await this.askStory('오박사: 선택이 끝났구나. 이제 태초마을 밖으로 나가 모험을 시작하렴!');
+      await this.askStory('오박사: 선택이 끝났구나. 이제 북쪽 출구로 나가 1번도로를 따라 상록시티로 가 보렴!');
+      this.showStoryObjective(6);
     } finally { this.storyBusy = false; }
   }
   async runBillProxy(npc) {
@@ -818,6 +866,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
       return;
     }
     if (this.storyBusy) return;
+    if (this.storyAutoSavePending) { this.storyAutoSavePending = false; this.saveGame(true); }
     if (this.menuOpen) { super.update(dt); return; }
     if (this.mode === 'gameOver') { this.restartAfterDefeat(); return; }
     document.getElementById('gameRoot').dataset.storyNoParty = String(this.partyPokemon.length === 0);
@@ -913,13 +962,12 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     this.notifyProgress(`${data.Name} ×${amount}`, 'reward');
     return true;
   }
-  receiveFieldItem(sourceId, amount = 1) {
+  receiveFieldItem(sourceId, amount = 1, frame = null) {
     if (!Number.isInteger(amount) || amount < 1) throw Error(`Invalid field item amount: ${amount}`);
-    const source = this.storyData.items[sourceId];
-    if (source && String(source.Flags || '').split(',').map(flag => flag.trim()).includes('KeyItem'))
-      return this.receiveStoryItem(sourceId, amount);
-    const hash = [...String(sourceId)].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    return this.receiveStoryItem(hash % 2 ? 'POKEBALL' : 'POTION', amount);
+    const sourceMap = frame && (this.storyRenderer?.map?.id === frame.mapId
+      ? this.storyRenderer.map : this.storySourceMaps?.get(frame.mapId));
+    const graphic = sourceMap?.events?.[frame?.eventId]?.pages?.[frame?.pageIndex]?.graphic?.character_name || '';
+    return this.receiveStoryItem(/objeto/i.test(graphic) ? 'POKEBALL' : sourceId, amount);
   }
   addStoryPokemon(id, level) {
     const species = window.SurvivorRPG.PokemonData[id.toLowerCase()];
@@ -987,6 +1035,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     this.storyBusy = true;
     try {
       this.story = JSON.parse(JSON.stringify(data.story));
+      this.normalizeStoryMilestones();
       window.SurvivorRPG.StoryState.ensureWildLevelProfile(this.story);
       this.interpreter.state = this.story;
       await this.transferStory(data.story.mapId, data.story.x, data.story.y, data.story.direction);
