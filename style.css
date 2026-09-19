@@ -108,6 +108,14 @@ button {
   text-align: center;
 }
 
+.mode-select-message {
+  margin: -2px 10px 14px;
+  font-size: 22px;
+  line-height: 1.45;
+  text-align: center;
+  opacity: .92;
+}
+
 .mode-select-button {
   width: 100%;
   min-height: 108px;
@@ -122,7 +130,8 @@ button {
 }
 
 .mode-select-button:hover,
-.mode-select-button:focus-visible {
+.mode-select-button:focus-visible,
+.mode-select-button.is-selected {
   border-image: url("assets/ui/pause/selector.png") 8 stretch;
   outline: 0;
 }

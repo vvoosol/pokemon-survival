@@ -22,6 +22,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   try {
     const modeOverlay = document.getElementById('modeSelectOverlay');
+    const resumeOverlay = document.getElementById('resumeSelectOverlay');
     const requestedMode = new URLSearchParams(location.search).get('mode');
     const chooseMode = () => {
       if (requestedMode === 'story' || requestedMode === 'battle') return Promise.resolve(requestedMode);
@@ -40,14 +41,62 @@ window.addEventListener("DOMContentLoaded", async () => {
       });
     };
 
+    const chooseResumeAction = mode => {
+      const store = window.SurvivorRPG.SaveStore.forMode(mode);
+      const saved = store.read();
+      if (!saved) return Promise.resolve('new');
+
+      const modeName = mode === 'story' ? '스토리 모드' : '배틀 모드';
+      document.getElementById('resumeSelectTitle').textContent = `${modeName} 저장 기록이 있습니다`;
+      document.getElementById('resumeSelectMessage').textContent = '이전 진행을 불러오거나 처음부터 다시 시작할 수 있습니다.';
+      resumeOverlay.hidden = false;
+      setBootStatus('저장 기록을 선택하세요.');
+
+      const loadButton = document.getElementById('resumeLoadBtn');
+      const restartButton = document.getElementById('resumeRestartBtn');
+      const buttons = [loadButton, restartButton];
+      let selected = 0;
+      const select = index => {
+        selected = index;
+        buttons.forEach((button, i) => button.classList.toggle('is-selected', i === selected));
+        buttons[selected].focus({preventScroll: true});
+      };
+
+      return new Promise(resolve => {
+        const finish = action => {
+          resumeOverlay.hidden = true;
+          document.removeEventListener('keydown', onKeyDown, true);
+          buttons.forEach(button => button.classList.remove('is-selected'));
+          resolve(action);
+        };
+        const onKeyDown = event => {
+          const key = event.key.toLowerCase();
+          if (['arrowup', 'arrowleft'].includes(key)) { event.preventDefault(); select(0); return; }
+          if (['arrowdown', 'arrowright'].includes(key)) { event.preventDefault(); select(1); return; }
+          if (key === 'z' || key === 'enter') { event.preventDefault(); finish(selected === 0 ? 'load' : 'restart'); return; }
+          if (key === 'x' || key === 'escape') { event.preventDefault(); finish('restart'); }
+        };
+        loadButton.addEventListener('click', () => finish('load'), {once: true});
+        restartButton.addEventListener('click', () => finish('restart'), {once: true});
+        document.addEventListener('keydown', onKeyDown, true);
+        select(0);
+      });
+    };
+
     const selectedMode = await chooseMode();
+    const resumeAction = await chooseResumeAction(selectedMode);
+    if (resumeAction === 'restart') {
+      const store = window.SurvivorRPG.SaveStore.forMode(selectedMode);
+      localStorage.removeItem(store.key);
+      localStorage.removeItem(store.backup);
+    }
     setBootStatus("게임 데이터를 불러오는 중...");
     const storyRequested = selectedMode === 'story';
     const GameClass = storyRequested ? window.SurvivorRPG.StoryGame : window.SurvivorRPG.Game;
     const game = new GameClass(document.getElementById("gameCanvas"));
     window.currentSurvivorRPG = game;
     await game.init();
-    if(!storyRequested && game.store.read())game.loadGame();
+    if(!storyRequested && resumeAction === 'load')game.loadGame();
     const suspend=()=>{
       game.suspended=document.hidden || !document.hasFocus();
       game.input.keys.clear();game.input.joystickVector={x:0,y:0};

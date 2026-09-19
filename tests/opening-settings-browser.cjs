@@ -90,14 +90,24 @@ const fs = require('node:fs');
       await page.waitForSelector('#modeSelectOverlay:not([hidden])');
       assert.equal(new URL(page.url()).searchParams.has('mode'), false);
       await page.locator(mode === 'story' ? '#storyModeBtn' : '#battleModeBtn').tap();
+      await page.waitForSelector('#resumeSelectOverlay:not([hidden])');
+      assert.match(await page.locator('#resumeSelectTitle').textContent(), /저장 기록/);
+      await page.locator('#resumeLoadBtn').tap();
       await page.waitForFunction(() => window.currentSurvivorRPG && document.getElementById('bootStatus').hidden && !currentSurvivorRPG.storyBusy);
       const after = await page.evaluate(() => {
         const g = currentSurvivorRPG;
         return {ids:g.ownedPokemon.map(p=>p.uniqueId),map:g.currentMapId,money:g.money};
       });
       assert.deepEqual(after, before);
+
+      await page.evaluate(() => currentSurvivorRPG.returnToOpening());
+      await page.waitForSelector('#modeSelectOverlay:not([hidden])');
+      await page.locator(mode === 'story' ? '#storyModeBtn' : '#battleModeBtn').tap();
+      await page.waitForSelector('#resumeSelectOverlay:not([hidden])');
+      await page.keyboard.press('x');
+      await page.waitForFunction(mode => !localStorage.getItem(mode === 'story' ? 'scientistRpgStorySave' : 'scientistRpgSave'), mode);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${mode}: saved opening return, touch resume, no mart, field backdrop and bounded menus/dialog on four viewports`);
+      console.log(`PASS ${mode}: saved opening return, load/restart prompt, no mart, field backdrop and bounded menus/dialog on four viewports`);
       await page.close();
     }
   } finally { await browser.close(); }
