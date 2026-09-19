@@ -214,6 +214,33 @@ test('old saves infer Viridian progress and Poké Ball-shaped field pickups awar
   assert.deepEqual(received, {id: 'POKEBALL', amount: 2});
 });
 
+test('Poké Ball-shaped field events are collected before unsupported native commands run', async () => {
+  const g = game();
+  g.story.mapId = 9;
+  g.storyRenderer = {map: source(9)};
+  g.storyPositions = {};
+  g.receiveStoryItem = (id, amount) => {
+    assert.equal(id, 'POKEBALL');
+    assert.equal(amount, 1);
+    g.balls.pokeBall = (g.balls.pokeBall || 0) + amount;
+  };
+  let message = '';
+  g.message = text => { message = text; };
+  const event = {
+    id: 999,
+    pages: [{
+      graphic: {character_name: 'objeto'},
+      list: [{code: 999, parameters: [], indent: 0}, {code: 0, parameters: [], indent: 0}]
+    }]
+  };
+  await g.runStoryEvent(event, 0);
+  assert.equal(g.storyError, null);
+  assert.equal(g.balls.pokeBall, 1);
+  assert.equal(g.erasedStoryEvents.has(999), true);
+  assert.deepEqual(g.story.mapEvents.erased, [999]);
+  assert.match(message, /몬스터볼/);
+});
+
 test('defeat returns to Oak before Viridian and to the Viridian checkpoint afterwards', async () => {
   const originalMovement = R.MovementSystem;
   R.MovementSystem = {safePosition: (_map, x, y) => ({x, y})};

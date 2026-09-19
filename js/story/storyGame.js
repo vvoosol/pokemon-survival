@@ -792,8 +792,25 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     }
     throw Error(`Unadapted Ruby condition: ${script}`);
   }
+  isPokeballFieldEvent(event, pageIndex) {
+    const page = event?.pages?.[pageIndex];
+    return /objeto/i.test(String(page?.graphic?.character_name || ''));
+  }
+  collectPokeballFieldEvent(event, pageIndex) {
+    if (!this.isPokeballFieldEvent(event, pageIndex)) return false;
+    this.erasedStoryEvents.add(event.id);
+    this.receiveStoryItem('POKEBALL', 1);
+    this.story.mapEvents = {
+      mapId: this.story.mapId,
+      positions: structuredClone(this.storyPositions),
+      erased: [...this.erasedStoryEvents]
+    };
+    this.message('몬스터볼을 1개 얻었다!', 2.5);
+    return true;
+  }
   async runStoryEvent(event, pageIndex) {
     if (this.storyBusy || this.storyError || this.storyBattle || !['trainer', 'pokemon'].includes(this.mode)) return;
+    if (this.collectPokeballFieldEvent(event, pageIndex)) return;
     if (this.isLockedPalletExit(event)) {
       this.storyBusy = true;
       try {

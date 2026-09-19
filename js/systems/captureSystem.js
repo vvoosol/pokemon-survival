@@ -38,7 +38,8 @@ window.SurvivorRPG.CaptureSystem = class CaptureSystem {
     const ballModifier = ball.catchModifier || 1;
     const speciesFactor = catchRate / 255;
     const hpFactor = 0.22 + (1 - hpRatio) * 0.68;
-    return Math.max(0.03, Math.min(0.95, speciesFactor * ballModifier * hpFactor + (wildPokemon.captureFailures || 0)*.06));
+    const currentChance = Math.max(0.03, Math.min(0.95, speciesFactor * ballModifier * hpFactor + (wildPokemon.captureFailures || 0)*.06));
+    return Math.min(1, currentChance * 1.5);
   }
 
   tryCapture(wildPokemon, ball) {
