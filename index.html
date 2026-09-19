@@ -60,6 +60,20 @@
       <div id="debugPanel" class="debug-panel" hidden></div>
       <div id="bootStatus" class="boot-status">게임을 불러오는 중...</div>
 
+      <div id="modeSelectOverlay" class="mode-select-overlay" hidden>
+        <section class="mode-select-window" aria-label="게임 모드 선택">
+          <h1>게임 모드 선택</h1>
+          <button id="storyModeBtn" class="mode-select-button" type="button">
+            <strong>스토리 모드</strong>
+            <span>Pokémon Anil 스토리를 따라 모험을 시작합니다.</span>
+          </button>
+          <button id="battleModeBtn" class="mode-select-button" type="button">
+            <strong>배틀 모드</strong>
+            <span>기존 사냥·포획·성장 샌드박스를 플레이합니다.</span>
+          </button>
+        </section>
+      </div>
+
       <div id="gameOver" class="game-over" hidden>
         <div class="game-over-box">
           <h1>더 싸울 수 있는 포켓몬이 없습니다!</h1>
@@ -140,9 +154,16 @@
   <script src="js/systems/survivalSystem.js"></script>
   <script src="js/systems/partyBattleSystem.js"></script>
   <script src="js/systems/upgradeSystem.js"></script>
+  <script src="js/story/storyState.js"></script>
+  <script src="js/story/storyData.js"></script>
   <script src="js/systems/saveStore.js"></script>
   <script src="js/ui/uiManager.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/story/eventInterpreter.js"></script>
+  <script src="js/story/mapRenderer.js"></script>
+  <script src="js/story/storyCombat.js"></script>
+  <script src="js/story/storyGame.js"></script>
+  <script src="js/story/storyTravel.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

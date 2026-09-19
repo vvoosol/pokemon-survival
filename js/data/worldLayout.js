@@ -35,7 +35,7 @@ window.SurvivorRPG = window.SurvivorRPG || {};
       map.name='시작의 마을';
       map.paths=[{x:480,y:480,width:672,height:128},{x:704,y:384,width:160,height:480},
         {x:736,y:704,width:352,height:160}];
-      add(map,'center',448,240);add(map,'shop',944,304);add(map,'lab',576,672);
+      add(map,'center',448,240);add(map,'lab',576,672);
       row(map,288,128,16);row(map,288,920,16);
       for(const x of [288,1280])for(let y=288;y<920;y+=128)add(map,'tree',x,y);
       for(const [x,y] of [[384,560],[1120,656],[864,736],[864,400]])add(map,'flowers',x,y);

@@ -6,15 +6,15 @@ const vm = require('node:vm');
 global.window = {SurvivorRPG:{},setTimeout:fn => fn()};
 for (const file of ['data/moveData','data/pokemonData','data/battleRewardData','data/growthData','data/anilAdapter',
   'data/upgradeData','data/mapData','entities/entity','entities/playerPokemon','entities/wildPokemon',
-  'systems/statSystem','systems/evolutionSystem','systems/upgradeSystem','systems/spawnSystem','systems/survivalSystem','systems/combatSystem','game'])
+  'systems/statSystem','systems/evolutionSystem','systems/upgradeSystem','systems/spawnSystem','systems/survivalSystem','story/storyCombat','systems/combatSystem','game'])
   vm.runInThisContext(fs.readFileSync(path.join(__dirname,'../js',file+'.js'),'utf8'));
 const R = window.SurvivorRPG, stats = new R.StatSystem(), upgrades = new R.UpgradeSystem(stats);
 const game = Object.assign(Object.create(R.Game.prototype),{statSystem:stats,trainer:{x:0,y:0},pokedex:{},message(){}});
 const make = (id,level=30) => game.createPartyPokemon(R.PokemonData[id],0,0,{level});
 
 test('exactly 30 original species from each added generation, covering every type', () => {
-  assert.equal(Object.keys(R.PokemonData).length,96);
-  for (const gen of [2,3]) {
+  assert.equal(Object.keys(R.PokemonData).length,186);
+  for (const gen of [2,3,4,5,6]) {
     const list = Object.values(R.PokemonData).filter(p=>p.generation===gen);
     assert.equal(list.length,30);
     assert.equal(new Set(list.flatMap(p=>p.types)).size,18);
@@ -30,7 +30,7 @@ test('exactly 30 original species from each added generation, covering every typ
   assert.deepEqual(R.DataAdapter.validate(),[]);
 });
 
-test('all 60 species are reachable in hunting tables with valid levels and survive capture/save reconstruction', () => {
+test('all 150 species are reachable in hunting tables with valid levels and survive capture/save reconstruction', () => {
   const found = new Set();
   for (const map of Object.values(R.Maps)) for (const zone of map.spawnZones) {
     for (const entry of zone.spawnTable) {
@@ -46,6 +46,22 @@ test('all 60 species are reachable in hunting tables with valid levels and survi
     assert.equal(restored.speciesId,p.id); assert.equal(restored.hp,owned.hp);
     assert.deepEqual(restored.equippedMoves,owned.equippedMoves);
   }
+});
+
+test('story grass encounters use a broad randomized level pool instead of the native fixed species list', () => {
+  const renderer = {
+    map:{id:1,width:1,height:1},
+    tileset:{terrain_tags:{values:{1:2}},passages:{values:{}},priorities:{values:{}}},
+    tileAt(){return 1;}
+  };
+  const zones = R.StorySpawnSystem.zones(renderer,{Land:[{species:'RATTATA',minLevel:5,maxLevel:10,weight:100}]},false);
+  assert.equal(zones.length,1);
+  const table = zones[0].spawnTable;
+  assert.ok(table.length>20);
+  assert.ok(table.some(entry=>entry.speciesId==='froakie'));
+  assert.ok(table.some(entry=>entry.speciesId==='snivy'));
+  assert.ok(table.some(entry=>entry.speciesId==='turtwig'));
+  assert.ok(table.every(entry=>entry.weight===1 && entry.minLevel>=5 && entry.maxLevel===10));
 });
 
 test('hero choices are only unknown compatible TM moves, no ability or tera choices', () => {
@@ -74,7 +90,7 @@ test('survival introduces every added species in a valid level band', () => {
       if(species.generation) {assert.ok(species.level<=d.levelMax);seen.add(id);}
     }
   }
-  assert.equal(seen.size,60);
+  assert.equal(seen.size,150);
 });
 
 test('legendary yields tera and one-step early evolution; terminal species yield mega, never ability changes', () => {

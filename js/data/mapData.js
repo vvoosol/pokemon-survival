@@ -5,8 +5,7 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     PROFESSOR: { key: "npc-oak", src: "assets/npcs/oak.png" },
     HUNTING_GUIDE: { key: "npc-brock", src: "assets/npcs/brock.png" },
     RETURN_GUIDE: { key: "npc-brock", src: "assets/npcs/brock.png" },
-    HEALER: { key: "npc-nurse", src: "assets/npcs/enfermera.png" },
-    SHOP: { key: "npc-clerk", src: "assets/npcs/tendero.png" }
+    HEALER: { key: "npc-nurse", src: "assets/npcs/enfermera.png" }
   };
   const tileSources = {
     grassA: { sx: 0, sy: 0, sw: 32, sh: 32 },
@@ -59,8 +58,7 @@ window.SurvivorRPG = window.SurvivorRPG || {};
       npcs: [
         { id: "oak", type: "PROFESSOR", name: "오박사", x: 800, y: 790 },
         { id: "guide", type: "HUNTING_GUIDE", name: "웅이 · 사냥터", x: 760, y: 440, dialogue: "어느 사냥터로 이동하시겠습니까?" },
-        { id: "healer", type: "HEALER", name: "간호사 · 치료", x: 560, y: 520, dialogue: "포켓몬을 치료하시겠습니까?" },
-        { id: "shop", type: "SHOP", name: "상점 점원", x: 1040, y: 520, dialogue: "필요한 도구가 있나요?" }
+        { id: "healer", type: "HEALER", name: "간호사 · 치료", x: 560, y: 520, dialogue: "포켓몬을 치료하시겠습니까?" }
       ],
       decorations: [
         { type: "sign", x: 736, y: 500 }, { type: "flower", x: 688, y: 520 }, { type: "flower", x: 912, y: 520 },
@@ -143,9 +141,10 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     };
   }
 
-  // Add the imported roster by encounter level without speeding up the spawn clocks.
+  // Add every imported generation to the hunting pools by encounter level.
+  // Each spawn still rolls independently, so grass encounters vary continuously.
   for (const species of Object.values(window.SurvivorRPG.PokemonData)) {
-    if (![2,3].includes(species.generation)) continue;
+    if (![2,3,4,5,6].includes(species.generation)) continue;
     const tier = Math.max(1,Math.min(5,Math.ceil(species.level / 10)));
     const map = maps['hunting_0' + tier];
     const eligible = map.spawnZones.filter(zone => zone.levelMax >= species.level);

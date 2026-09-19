@@ -1,10 +1,23 @@
 window.SurvivorRPG = window.SurvivorRPG || {};
 window.SurvivorRPG.SaveStore = {
   key:'scientistRpgSave', backup:'scientistRpgSave.backup', journalKey:'scientistRpgResearch',
+  forMode(mode) {
+    if (!['story', 'battle'].includes(mode)) throw Error('Invalid game mode');
+    const prefix = mode === 'story' ? 'scientistRpgStory' : 'scientistRpg';
+    return Object.assign(Object.create(this), {mode, key: `${prefix}Save`, backup: `${prefix}Save.backup`, journalKey: `${prefix}Research`});
+  },
+  remove() {
+    localStorage.removeItem(this.key);
+    localStorage.removeItem(this.backup);
+    localStorage.removeItem(this.journalKey);
+  },
   validate(data) {
     const R=window.SurvivorRPG;
-    if(!data || ![1,2,3,4].includes(data.version) || !Array.isArray(data.ownedPokemon) || !data.ownedPokemon.length)throw Error('Invalid report');
-    if(!Array.isArray(data.partyIds)||!data.partyIds.length||!Array.isArray(data.reserveIds))throw Error('Invalid party');
+    const mode = this.mode || 'battle';
+    if ((data?.gameMode || 'battle') !== mode) throw Error('Save belongs to another mode');
+    if (mode === 'story') R.StoryState.validate(data.story);
+    if(!data || ![1,2,3,4].includes(data.version) || !Array.isArray(data.ownedPokemon) || mode === 'battle' && !data.ownedPokemon.length)throw Error('Invalid report');
+    if(!Array.isArray(data.partyIds)||mode === 'battle' && !data.partyIds.length||!Array.isArray(data.reserveIds))throw Error('Invalid party');
     const ids=new Set();
     for(const p of data.ownedPokemon) {
       if(!R.PokemonData[p.speciesId] || typeof p.uniqueId!=='string'||ids.has(p.uniqueId)||!Number.isInteger(p.level)||p.level<1||p.level>100||!Number.isFinite(p.hp)||p.hp<0)throw Error('Invalid Pokemon');
@@ -64,7 +77,7 @@ window.SurvivorRPG.SaveStore = {
   export(data) {
     this.validate(data);
     const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
-    const link=document.createElement('a');link.href=url;link.download='pokemon-report.json';link.click();
+    const link=document.createElement('a');link.href=url;link.download=this.mode === 'story' ? 'pokemon-story-report.json' : 'pokemon-report.json';link.click();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 };

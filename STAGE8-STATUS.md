@@ -1,3 +1,71 @@
+# 최신 재개 체크포인트 - 2026-09-18
+
+## 현재 목표
+
+Stage 8 스토리모드를 Pokemon Anil V4.13 원본의 맵/이벤트/대사/NPC/트레이너 데이터를 이용해 3번째 체육관까지 완성한다. 기존 샌드박스는 Battle Mode로 그대로 보존하고, 전투는 현재의 실시간 자동전투 방식을 유지한다. 3관장까지 실제 진행과 저장/불러오기 검증이 끝난 뒤에만 관련 파일을 커밋하고 `origin/main`에 푸시한다.
+
+## 이번 작업에서 이미 완료된 내용
+
+- `js/story/` 기반 스토리 런타임과 원본 추출 구조는 이미 존재한다.
+- 원본 Anil 데이터는 `build/anil-story-source/`에 추출되어 있다.
+- `tools/build-story-battle-data.cjs`가 PBS의 포켓몬/기술/아이템/트레이너/인카운터/트레이너 타입을 파싱하고 `assets/story/battle-data.json`과 필요한 그래픽을 만든다.
+- 스토리 인터프리터는 대사, 선택지, 조건분기, 루프, 라벨/점프, 스위치, 변수, 셀프스위치, 대기, 맵 이동, 공통 이벤트, Ruby 스크립트 위임을 이미 지원한다.
+- `storyEventContains(event,x,y)`를 추가해 RPG Maker 이벤트명의 `size(w,h)`를 반영한다.
+- 다중 타일 이벤트의 충돌/터치/실행 판정이 수정되었다.
+- `setBattleRule()`가 무관한 규칙 처리 중 `canLoseBattle`을 잘못 초기화하지 않도록 수정되었고, 전투 종료 뒤에는 정상 초기화된다.
+- 스토리 전투 중 NPC 대화 중첩을 막았다.
+- 스토리 이벤트 실행 시 전투 상태와 트레이너/포켓몬 모드를 확인한다.
+- 저장 불러오기 순서를 스토리/인터프리터 상태 복원 후 `transferStory()`가 실행되도록 수정했다.
+- `mapRenderer.draw()`에 이동된 이벤트 위치와 삭제된 이벤트 상태를 전달한다.
+- 이동된 NPC는 현재 위치/방향으로 렌더링되고 삭제 이벤트는 더 이상 렌더링되지 않는다.
+
+## 마지막 검증 결과
+
+`tests/story-opening-browser.cjs` PASS.
+
+검증된 흐름: 원본식 오프닝 -> 집/태초마을 이동 -> 연구소 -> 스타터 선택 -> 스토리 저장 -> 새로고침/불러오기.
+
+## 이미 확인한 사실 - 다시 조사하지 말 것
+
+- 원본 루트: `C:/Users/User/Downloads/POKEMON ANIL V4.13/Pokemon Anil V4.13`
+- 1관장: Map 42, `:lider1`, badge 0, TM39, Rock Smash 키 아이템.
+- 2관장: Map 57, `:lider2`, badge 1, TM51.
+- 3관장: Map 56, `:lider3`, badge 2, TM73, Light Ball.
+- 관장 파티는 원본 스위치 666, 64 등에 따라 분기하므로 임의의 한 파티를 고정하면 안 된다.
+- Common Event 13은 Nurse Joy/포켓몬센터 회복 흐름, Common Event 14는 PC다.
+- 학습장치와 다중 출전 시스템은 샌드박스에 이미 구현되어 있으므로 중복 구현 금지.
+- `js/game.js`에 `items.expShare`, `items.expShareEnabled`, `items.doubleBattle`, `items.tripleBattle`, reserve EXP 처리, 저장 복원, `partyBattle.sync(this)`가 이미 있다.
+- `js/systems/partyBattleSystem.js`의 `partyBattle.members`가 동시 출전 포켓몬을 관리한다.
+- `js/ui/uiManager.js`에 학습장치 메뉴/상점/상태 표시가 이미 있다.
+- `js/story/storyState.js`에 `keyItems`, `gymRewards`, `expShareEnabled`, `activeCount`가 있고, 1관장 학습장치 해금 상태 검증도 이미 들어 있다.
+
+사용자 지정 추가 보상은 원본 보상에 덧붙인다.
+- 1관장: 학습장치 해금, ON/OFF, 비참여 포켓몬 경험치 70%.
+- 2관장: 동시 출전 최대 2마리 해금.
+- 3관장: 동시 출전 최대 3마리 해금.
+
+## 다음 토큰에서 바로 시작할 정확한 작업
+
+1. 저장소 전체를 다시 훑지 말고 `js/game.js`, `js/ui/uiManager.js`, `js/systems/partyBattleSystem.js`에서 `showGameMenu`, `expShare`, `expShareEnabled`, `partyBattle.sync`, `partyBattle.members`, `doubleBattle`, `tripleBattle`, 저장/불러오기 부분만 좁게 확인한다.
+2. 1/2/3관장 승리 보상을 기존 샌드박스 시스템에 연결한다.
+3. 3관장까지 실제 진행에 필요한 이벤트 명령만 추가한다. 우선순위: 이동 루트 209/509, 이벤트 삭제, 이벤트 위치/방향 변경, 전체 회복 314, 진행을 막는 화면/사운드 명령.
+4. Ruby 어댑터도 필요한 호출만 추가한다: `pbReceiveItem`, `pbItemBall`, `pbGetKeyItem`, `pbAddPokemon`, `Pokemon.play_cry`, `FollowingPkmn.*`, `pbSetSelfSwitch`, 포켓몬센터 회복 관련 호출.
+5. Map 42 -> Map 57 -> Map 56 관장 승리 E2E 테스트를 추가하고 원본 보상 + 사용자 지정 해금을 검증한다.
+6. 배지, 셀프스위치, 이동 이벤트, 아이템, gymRewards, 학습장치 상태, activeCount 저장/불러오기를 검증한다.
+7. 관련 테스트가 모두 통과하고 3관장까지 실제 진행이 끝난 뒤에만 관련 파일을 커밋하고 `origin/main`에 푸시한다.
+
+## Git/작업 상태
+
+현재 Stage 8 관련 수정/추가 파일에는 `index.html`, `style.css`, `js/game.js`, `js/main.js`, `js/systems/saveStore.js`, `js/ui/uiManager.js`, `js/story/`, `assets/story/`, `story-preview.html`, `tests/story-opening-browser.cjs`, `tests/story-runtime.test.cjs`, `tools/build-story-battle-data.cjs`, 스토리 스크린샷 등이 포함된다. 이 변경은 되돌리지 않는다.
+
+Stage 8 최종 커밋/푸시는 아직 하지 않았다. 이유는 3관장까지의 요청 범위가 아직 미완성이기 때문이다.
+
+## 앞으로의 토큰 종료 규칙
+
+컨텍스트 한계가 가까워지면 이 파일 상단 체크포인트를 갱신한다. 반드시 완료 내용, 수정 파일, 테스트 결과, 미완료 항목, 다음 첫 작업, 재조사 금지 사실, 커밋/푸시 상태를 남긴 뒤 턴을 종료한다.
+
+---
+
 # 8단계 작업 상태
 
 ## 완료 범위

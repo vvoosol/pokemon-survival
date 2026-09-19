@@ -15,12 +15,39 @@ window.addEventListener("DOMContentLoaded", async () => {
   window.addEventListener("orientationchange", updateFrameScale);
   window.visualViewport?.addEventListener("resize", updateFrameScale);
 
+  if (location.protocol === 'file:' && !window.SurvivorRPG.storyDataReady) {
+    setBootStatus('직접 실행하려면 배포본 dist/index.html을 열어 주세요. 개발본은 게임실행.bat으로 실행합니다.');
+    return;
+  }
+
   try {
+    const modeOverlay = document.getElementById('modeSelectOverlay');
+    const requestedMode = new URLSearchParams(location.search).get('mode');
+    const chooseMode = () => {
+      if (requestedMode === 'story' || requestedMode === 'battle') return Promise.resolve(requestedMode);
+      setBootStatus('플레이할 모드를 선택하세요.');
+      modeOverlay.hidden = false;
+      return new Promise(resolve => {
+        const select = mode => {
+          modeOverlay.hidden = true;
+          const url = new URL(location.href);
+          url.searchParams.set('mode', mode);
+          history.replaceState(null, '', url);
+          resolve(mode);
+        };
+        document.getElementById('storyModeBtn').addEventListener('click', () => select('story'), {once: true});
+        document.getElementById('battleModeBtn').addEventListener('click', () => select('battle'), {once: true});
+      });
+    };
+
+    const selectedMode = await chooseMode();
     setBootStatus("게임 데이터를 불러오는 중...");
-    const game = new window.SurvivorRPG.Game(document.getElementById("gameCanvas"));
+    const storyRequested = selectedMode === 'story';
+    const GameClass = storyRequested ? window.SurvivorRPG.StoryGame : window.SurvivorRPG.Game;
+    const game = new GameClass(document.getElementById("gameCanvas"));
     window.currentSurvivorRPG = game;
     await game.init();
-    if(window.SurvivorRPG.SaveStore.read())game.loadGame();
+    if(!storyRequested && game.store.read())game.loadGame();
     const suspend=()=>{
       game.suspended=document.hidden || !document.hasFocus();
       game.input.keys.clear();game.input.joystickVector={x:0,y:0};

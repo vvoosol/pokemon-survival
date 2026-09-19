@@ -4,10 +4,19 @@ Pokemon Anil V4.13 source data and assets are used as the local source-of-truth 
 
 ## Run
 
-```text
-C:\Users\User\Documents\New project\html-monster-resonance-game
-http://127.0.0.1:8787/
-```
+Windows에서는 프로젝트 폴더의 `게임실행.bat`을 더블클릭하면 로컬 서버가 실행되고 브라우저가 자동으로 열립니다.
+
+온라인 플레이: https://vvoosol.github.io/pokemon-survival/
+
+`node tools/build-web.cjs`로 생성한 `dist/index.html`은 Chrome/Edge에서 직접 열 수 있습니다. 개발용 루트 `index.html`은 로컬 서버로 실행합니다.
+
+`main`에 푸시하면 GitHub Actions에서 테스트와 정적 빌드를 실행하고 `dist`를 GitHub Pages에 배포합니다. 별도 서버 설치 없이 다른 기기에서 위 링크로 접속할 수 있습니다.
+
+설정의 **처음 오프닝으로 돌아가기**는 현재 진행을 저장하고 모드 선택 화면으로 돌아갑니다. 저장 실패 시 현재 게임에 머무릅니다. 포켓마트 메뉴와 허브 상점은 제거했습니다. 설정·대화·포켓몬 메뉴는 동일한 16:9 화면 안에서 지도 배경을 유지합니다.
+
+저장은 기기/브라우저별로 보관됩니다. 다른 기기로 옮길 때는 리포트 내보내기/가져오기를 사용하세요.
+
+기본 주소: `http://127.0.0.1:8787/`
 
 ## Survival Mode
 

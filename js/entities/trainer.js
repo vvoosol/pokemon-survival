@@ -8,7 +8,8 @@ window.SurvivorRPG.Trainer = class Trainer extends window.SurvivorRPG.Entity {
 
   update(dt, input, movementSystem, world) {
     const vector = input.movementVector();
-    movementSystem.move(this, vector.x, vector.y, dt, world);
+    this.running = !!input.keys?.has('z') && Math.hypot(vector.x, vector.y) > 0;
+    movementSystem.move(this, vector.x, vector.y, dt, world, this.running ? 2 : 1);
     this.updateBase(dt);
   }
 };

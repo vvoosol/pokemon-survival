@@ -59,8 +59,8 @@ window.SurvivorRPG.UIManager = class UIManager {
     if (!this.levelToast.hidden) this.levelToast.textContent = game.progressNotice.text;
     this.messageBox.hidden = game.messageTimer <= 0;
     if (!this.messageBox.hidden) this.messageBox.textContent = game.messageText;
-    this.gameOver.hidden = game.mode !== "gameOver";
-    document.getElementById("restartBtn").textContent = "오박사에게 새 파트너 받기";
+    this.gameOver.hidden = game.mode !== "gameOver" || !!game.story;
+    document.getElementById("restartBtn").textContent = game.story ? '포켓몬센터에서 계속하기' : "오박사에게 새 파트너 받기";
     this.updateSurvival(game);
     this.debugPanel.hidden = !game.debug;
     if (game.debug) {
@@ -90,6 +90,7 @@ window.SurvivorRPG.UIManager = class UIManager {
   }
 
   zActionText(game) {
+    if (game.mode === 'trainer' && game.trainer.running && !game.menuOpen) return '달리기';
     if (game.mode === "survivalClear") return "귀환";
     if (game.menuOpen || game.mode === "levelChoice" || game.mode === "moveLearn") return "결정";
     if (game.nearbyNpc) return game.nearbyNpc.type === "HEALER" ? "치료" : "대화";
@@ -297,7 +298,6 @@ window.SurvivorRPG.UIManager = class UIManager {
     else if (game.menuView === "areaSelect") this.renderAreaSelectMenu(game);
     else if (game.menuView === "bag") this.renderBagMenu(game);
     else if (game.menuView === "bagTarget") this.renderBagTargetMenu(game);
-    else if (game.menuView === "mart") this.renderMartMenu(game);
     else if (game.menuView === "report") this.renderReportMenu(game);
     else if (game.menuView === "settings") this.renderSettingsMenu(game);
     else if (game.menuView === "formation") this.renderFormationMenu(game);
@@ -323,7 +323,6 @@ window.SurvivorRPG.UIManager = class UIManager {
           ${this.menuOption("bag", "assets/ui/pause/bagA.png", "가방")}
           ${this.menuOption("pokedex", "assets/ui/pause/pokedexA.png", "포켓몬 도감")}
           ${this.menuOption("report", "assets/ui/pause/saveA.png", "리포트")}
-          ${this.menuOption("mart", "assets/ui/pause/playercardA.png", "포켓마트")}
           ${this.menuOption("formation", "assets/ui/pause/optionsA.png", "배틀 모드")}
           ${this.menuOption("settings", "assets/ui/pause/optionsA.png", "설정")}
           <button class="menu-option" data-action="close" data-selectable><span class="menu-option-content"><img class="menu-icon" src="assets/ui/pause/exitA.png" alt="">닫기</span></button>
@@ -348,7 +347,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.menuRoot.innerHTML = `<section class="compact-screen"><div class="menu-title">배틀 모드</div>
       <div class="menu-list" role="radiogroup" aria-label="동시 출전">
         ${choices.map(([mode, name, owned]) => `<button class="menu-option" role="radio" aria-checked="${game.battleFormation === mode}"
-          data-formation="${mode}" ${owned ? 'data-selectable' : 'disabled'}>${name}${!owned ? ' · 미구매' : game.battleFormation === mode ? ' · ON' : ''}</button>`).join('')}
+          data-formation="${mode}" ${owned ? 'data-selectable' : 'disabled'}>${name}${!owned ? (game.story ? ' · 체육관 보상' : ' · 미구매') : game.battleFormation === mode ? ' · ON' : ''}</button>`).join('')}
         <button class="menu-option" data-back data-selectable>뒤로</button>
       </div></section>`;
     this.menuRoot.dataset.columns = '1';
@@ -364,8 +363,12 @@ window.SurvivorRPG.UIManager = class UIManager {
         <button class="menu-option" data-professor="resetConfirm" data-selectable>새로 시작</button>
         <button class="menu-option" data-close data-selectable>대화 종료</button>`;
     } else if (game.menuView === 'starterSelect') {
-      content = ['bulbasaur', 'charmander', 'squirtle'].map((id) => `<button class="menu-option" data-starter="${id}" data-selectable>
-        <span class="menu-option-content"><span class="starter-icon" style="background-image:url('assets/pokemon-icons/${id}.png')"></span>${window.SurvivorRPG.PokemonData[id].name}</span></button>`).join('')
+      content = ['bulbasaur', 'charmander', 'squirtle'].map((id) => {
+        const data = window.SurvivorRPG.PokemonData[id];
+        const icon = data?.icon || `assets/pokemon-icons/${id}.png`;
+        return `<button class="menu-option" data-starter="${id}" data-selectable>
+        <span class="menu-option-content"><span class="starter-icon" style="background-image:url('${icon}')"></span>${data.name}</span></button>`;
+      }).join('')
         + (game.awaitingStarter ? '' : '<button class="menu-option" data-back data-selectable>뒤로</button>');
     } else if (game.menuView === 'starterConfirm') {
       const name = window.SurvivorRPG.PokemonData[game.pendingStarter]?.name || '';
@@ -513,7 +516,7 @@ window.SurvivorRPG.UIManager = class UIManager {
       row.dataset.pokedexId = item.id;
       row.dataset.selectable = "";
       row.innerHTML = `
-        ${state.seen ? `<img src="assets/pokemon-icons/${item.id}.png" alt="">` : "<span></span>"}
+        ${state.seen ? `<img src="${item.icon || `assets/pokemon-icons/${item.id}.png`}" alt="">` : "<span></span>"}
         <strong>No.${String(item.dexNo || 0).padStart(3, "0")} ${state.seen ? item.name : "???"}</strong>
         <span>${state.caught ? "포획" : state.seen ? "발견" : "미발견"}</span>
       `;
@@ -598,42 +601,6 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.bindMenuButton("[data-action='back']", () => game.openMenuView("bag"), "cancel");
   }
 
-  renderMartMenu(game) {
-    const items = window.SurvivorRPG.ItemData;
-    this.menuRoot.innerHTML = `
-      <section class="mart-screen">
-        <div class="menu-title">포켓마트</div>
-        <strong class="mart-money">${game.money}원</strong>
-        <div class="mart-content">
-          <div class="item-list">
-            ${this.martRow("pokeBall", items.pokeBall, game.balls.pokeBall)}
-            ${this.martRow("potion", items.potion, game.items.potion || 0)}
-            ${this.martRow("expShare", items.expShare, game.items.expShare ? "보유" : 0, game.items.expShare)}
-            ${this.martRow("doubleBattle", items.doubleBattle, game.items.doubleBattle ? "보유" : 0, game.items.doubleBattle)}
-            ${this.martRow("tripleBattle", items.tripleBattle, game.items.tripleBattle ? "보유" : 0, game.items.tripleBattle)}
-          </div>
-          <div class="item-description">Z를 누르면 1개를 구매합니다.</div>
-        </div>
-        <div class="menu-footer"><button class="menu-action" data-action="back" data-selectable>뒤로</button></div>
-      </section>
-    `;
-    this.menuRoot.dataset.columns = "1";
-    this.bindMenuButton("[data-buy]", (button) => {
-      if (game.buyItem(button.dataset.buy)) game.assets.play("uiBuy", 0.42);
-    });
-    this.bindMenuButton("[data-action='back']", () => game.openMenuView("main"), "cancel");
-  }
-
-  martRow(id, item, amount, disabled = false) {
-    return `
-      <button class="item-row" data-buy="${id}" data-description="${item.description}" ${disabled ? "disabled" : "data-selectable"}>
-        <img class="item-icon" src="${item.icon}" alt="">
-        <strong>${item.name}<br><small>${item.description}</small></strong>
-        <span>${item.price}원 · ${amount}</span>
-      </button>
-    `;
-  }
-
   renderReportMenu(game) {
     const caught = Object.values(game.pokedex).filter((entry) => entry.caught).length;
     const seen = Object.values(game.pokedex).filter((entry) => entry.seen).length;
@@ -662,7 +629,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.bindMenuButton("[data-action='save']", () => game.saveGame());
     this.bindMenuButton("[data-action='load']", () => game.loadGame());
     this.bindMenuButton("[data-action='export']", () => {
-      try{window.SurvivorRPG.SaveStore.export(game.serializeRun());}catch{game.message('내보낼 리포트가 없습니다.',2);}
+      try{game.store.export(game.serializeRun());}catch{game.message('내보낼 리포트가 없습니다.',2);}
     });
     this.bindMenuButton("[data-action='import']", () => this.menuRoot.querySelector('#reportImport').click());
     this.menuRoot.querySelector('#reportImport').addEventListener('change',event=>game.importReport(event.target.files[0]));
@@ -695,10 +662,13 @@ window.SurvivorRPG.UIManager = class UIManager {
         <label class="menu-option">배경 음악 <input aria-label="배경 음악" data-setting="music" data-selectable type="range" min="0" max="100" step="5" value="${Math.round(s.music*100)}"></label>
         <label class="menu-option">효과음 <input aria-label="효과음" data-setting="effects" data-selectable type="range" min="0" max="100" step="5" value="${Math.round(s.effects*100)}"></label>
         <label class="menu-option"><input data-setting="reducedEffects" data-selectable type="checkbox" ${s.reducedEffects?'checked':''}> 전투 번쩍임 줄이기</label>
+        <button class="menu-action" data-action="opening" data-selectable>처음 오프닝으로 돌아가기</button>
+        <small>진행 상황을 저장하고 모드 선택 화면으로 돌아갑니다.</small>
         <button class="menu-action" data-action="back" data-selectable>뒤로</button>
       </div></section>`;
     this.menuRoot.dataset.columns='1';
     this.menuRoot.querySelectorAll('[data-setting]').forEach(input=>input.addEventListener('input',()=>game.assets.configure(input.dataset.setting,input.type==='checkbox'?input.checked:input.value/100)));
+    this.bindMenuButton('[data-action="opening"]',()=>game.returnToOpening());
     this.bindMenuButton('[data-action="back"]',()=>game.backMenu(),'cancel');
   }
 

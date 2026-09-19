@@ -67,9 +67,15 @@ window.SurvivorRPG.Entity = class Entity {
       ? (pose.direction.x > 0 ? 'right' : 'left') : (pose.direction.y > 0 ? 'down' : 'up')) : this.direction;
     const row = { down: 0, left: 1, right: 2, up: 3 }[facing] || 0;
     const col = Math.floor(this.animTime) % 4;
-    const size = this.drawSize;
-    const screenX = Math.round(this.x - camera.x - size / 2 + this.damageOffsetX);
-    const screenY = Math.round(this.y - camera.y - size / 2 + this.damageOffsetY);
+    // Anil follower sheets are four columns by four directions, with variable
+    // frame dimensions. Preserve their native size relative to 32px map tiles.
+    const native = this.spriteLayout !== 'strip';
+    const frameWidth = native ? img.width / 4 : this.frameSize;
+    const frameHeight = native ? img.height / 4 : this.frameSize;
+    const width = native ? frameWidth : this.drawSize;
+    const height = native ? frameHeight : this.drawSize;
+    const screenX = Math.round(this.x - camera.x - width / 2 + this.damageOffsetX);
+    const screenY = Math.round(this.y - camera.y + (native ? 16 - height : -height / 2) + this.damageOffsetY);
 
     ctx.save();
     if (pose) {
@@ -84,20 +90,20 @@ window.SurvivorRPG.Entity = class Entity {
     }
     if (this.spriteLayout === 'strip') {
       const frame = Math.floor(this.animTime) % Math.max(1, Math.floor(img.width / img.height));
-      ctx.drawImage(img, frame * img.height, 0, img.height, img.height, screenX, screenY, size, size);
+      ctx.drawImage(img, frame * img.height, 0, img.height, img.height, screenX, screenY, width, height);
       ctx.restore();
       return;
     }
     ctx.drawImage(
       img,
-      col * this.frameSize,
-      row * this.frameSize,
-      this.frameSize,
-      this.frameSize,
+      col * frameWidth,
+      row * frameHeight,
+      frameWidth,
+      frameHeight,
       screenX,
       screenY,
-      size,
-      size
+      width,
+      height
     );
     ctx.restore();
   }

@@ -1,0 +1,110 @@
+const {chromium} = require('playwright');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const {pathToFileURL} = require('node:url');
+const fs = require('node:fs');
+(async () => {
+  const browser = await chromium.launch({channel: 'chrome', headless: true});
+  const page = await browser.newPage({viewport: {width:1280,height:720}});
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  page.on('requestfailed', r => {
+    const failure = r.failure()?.errorText || '';
+    if (failure === 'net::ERR_ABORTED' && /\.ogg(?:$|\?)/i.test(r.url())) return;
+    errors.push(r.url()+': '+failure);
+  });
+  page.on('response', r => {if(r.status()>=400) errors.push(r.status()+' '+r.url());});
+  const screenshots = path.join(__dirname, 'screenshots'); fs.mkdirSync(screenshots, {recursive:true});
+  try {
+    const url = process.env.GAME_URL || pathToFileURL(path.join(__dirname,'../dist/index.html')).href+'?mode=story';
+    await page.goto(url);
+    await page.waitForFunction(() => currentSurvivorRPG?.storyRenderer?.map && !currentSurvivorRPG.storyBusy, {timeout:30000});
+    console.log('PASS static HTML boot', url);
+    await page.evaluate(async () => {
+      const g = currentSurvivorRPG; g.suspended = true;
+      g.tick = g.update.bind(g); g.update = () => {};
+      g.story.switches[64] = true; g.story.switches[347] = true;
+      g.addStoryPokemon('BULBASAUR', 80); g.addStoryPokemon('FROAKIE', 80);
+      g.awaitingStarter = false; g.interpreter.host.wait = async () => {};
+      window.drain = async promise => {
+        let done=false, failure; promise.then(()=>done=true,e=>{failure=e;done=true;});
+        for(let i=0;i<30000&&!done;i++) {
+          if(g.storyDialog.resolve) g.answerStory(0);
+          g.suspended=false; g.tick(.05); g.suspended=true;
+          if(i%100===0||!g.storyBattle) await new Promise(r=>setTimeout(r,0));
+        }
+        if(failure)throw failure;
+        if(g.storyError)throw g.storyError;
+        if(!done)throw Error('Battle timeout: '+g.mode);
+      };
+    });
+    const placement = await page.evaluate(async () => {
+      const g=currentSurvivorRPG, result=[];
+      for(const id of [2,4,9,15,19,107,158]) {
+        await g.transferStory(id,14,16);
+        const doors=g.storyDoors();
+        for(const npc of g.storyProxyNpcs) {
+          const distance=Math.min(...doors.map(d=>Math.hypot(d.x-npc.x,d.y-npc.y)));
+          if(distance>3.2)throw Error(npc.id+' is not beside a door: '+distance);
+          if(!SurvivorRPG.MovementSystem.canStand(g.map,(npc.x+.5)*32,(npc.y+.5)*32,10)) throw Error(npc.id+' blocked');
+          result.push([id,npc.id,npc.x,npc.y]);
+        }
+      }
+      await g.transferStory(9,23,28);
+      return result;
+    });
+    console.log('PASS NPC doors',JSON.stringify(placement));
+    await page.screenshot({path:path.join(screenshots,'outdoor-doors.png')});
+    const speed = await page.evaluate(() => {
+      const g=currentSurvivorRPG, t=g.trainer;
+      const world={width:2000,height:2000,colliders:[]};
+      t.x=t.y=500; g.input.keys=new Set(['d']); t.update(.5,g.input,g.movementSystem,world); const walk=t.x-500;
+      t.x=500;g.input.keys.add('z');t.update(.5,g.input,g.movementSystem,world);const run=t.x-500;
+      g.input.keys.clear();return {walk,run};
+    });
+    assert.ok(Math.abs(speed.run-speed.walk*2)<1e-9); console.log('PASS sprint',speed);
+    await page.evaluate(async () => {
+      const g=currentSurvivorRPG; await g.transferStory(9,23,28);g.storyBusy=false;
+      window.battleResult=g.runStoryProxy(42,16);
+    });
+    await page.waitForFunction(()=>currentSurvivorRPG.gymArena && currentSurvivorRPG.storyDialog.resolve);
+    assert.ok(await page.locator('.story-dialog').innerText().then(t=>t.includes('배틀 규칙')));
+    await page.screenshot({path:path.join(screenshots,'gym-arena-rules.png')});
+    await page.evaluate(()=>drain(battleResult));
+    const victory=await page.evaluate(()=>({badge:currentSurvivorRPG.story.badges[0],arena:!!currentSurvivorRPG.gymArena,map:currentSurvivorRPG.story.mapId}));
+    assert.deepEqual(victory,{badge:true,arena:false,map:9});console.log('PASS real gym combat and return');
+    for(const view of ['pokemon','summary','bag','pokedex','settings']) {
+      await page.evaluate(view=>{const g=currentSurvivorRPG;g.openMenuView(view,0);},view);
+      await page.screenshot({path:path.join(screenshots,'unified-'+view+'.png')});
+      const bounds=await page.locator('#screenFrame').boundingBox();assert.ok(Math.abs(bounds.width/bounds.height-16/9)<.01);
+    }
+    for(const viewport of [{width:1920,height:1080},{width:390,height:844}]) {
+      await page.setViewportSize(viewport);
+      await page.waitForFunction(() => {
+        const r = document.getElementById('screenFrame').getBoundingClientRect();
+        return Math.abs(r.width - Math.min(innerWidth, innerHeight * 16 / 9)) < 1 &&
+          r.x >= -1 && r.y >= -1 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1;
+      });
+      const bounds=await page.locator('#screenFrame').boundingBox();assert.ok(Math.abs(bounds.width/bounds.height-16/9)<.01);
+      assert.ok(bounds.x>=-1&&bounds.y>=-1&&bounds.x+bounds.width<=viewport.width+1&&bounds.y+bounds.height<=viewport.height+1);
+    }
+    console.log('PASS menus and responsive frame');
+    const recovery=await page.evaluate(async () => {
+      const g=currentSurvivorRPG;g.menuOpen=false;g.ui.hideGameMenu();
+      await g.transferStory(9,23,28); const before={money:g.money,ids:g.ownedPokemon.map(p=>p.uniqueId),badges:[...g.story.badges],items:{...g.story.keyItems}};
+      g.partyPokemon.forEach(p=>{p.hp=0;p.dead=true;p.fainted=true;});g.mode='gameOver';
+      await g.restartAfterDefeat();
+      const npc=g.storyProxyNpcs.find(p=>p.label==='간호순');
+      return {before,after:{money:g.money,ids:g.ownedPokemon.map(p=>p.uniqueId),badges:g.story.badges,items:g.story.keyItems},
+        mode:g.mode,healed:g.partyPokemon.every(p=>p.hp===p.maxHp&&!p.dead),map:g.story.mapId,
+        distance:Math.hypot(g.trainer.x-(npc.x+.5)*32,g.trainer.y-(npc.y+.5)*32),error:g.storyError?.message};
+    });
+    assert.equal(recovery.error,undefined);assert.equal(recovery.mode,'trainer');assert.equal(recovery.healed,true);
+    assert.equal(recovery.map,9);assert.ok(recovery.distance<=48);assert.deepEqual(recovery.after,recovery.before);
+    console.log('PASS defeat preserves progress and heals at nearby center');
+    await page.reload();
+    await page.waitForFunction(()=>currentSurvivorRPG?.storyRenderer?.map&&!currentSurvivorRPG.storyBusy);
+    assert.equal(await page.evaluate(()=>currentSurvivorRPG.story.badges[0]),true);
+    assert.deepEqual(errors,[]); console.log('PASS reload after recovery; no missing resources or runtime errors');
+  } finally {await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

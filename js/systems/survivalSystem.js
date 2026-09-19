@@ -32,7 +32,7 @@ window.SurvivorRPG.SurvivalSystem = class SurvivalSystem {
       ['venusaur', 'pidgeot', 'vileplume', 'poliwrath', 'machamp', 'golem', 'alakazam']
     ];
     const extra = Object.values(window.SurvivorRPG.PokemonData).filter(species =>
-      [2,3].includes(species.generation) && species.level <= Math.min(50,level + 2) && species.level >= Math.max(1,level - 15));
+      [2,3,4,5,6].includes(species.generation) && species.level <= Math.min(50,level + 2) && species.level >= Math.max(1,level - 15));
     return { levelMin: Math.max(3, level - 2), levelMax: Math.min(50, level + 2),
       pool: [...pools[Math.min(4, Math.floor(this.elapsed / 180))], ...extra.map(species => species.id)],
       cap: 16 + Math.floor(progress * 28), interval: 4 - progress * 1.8,

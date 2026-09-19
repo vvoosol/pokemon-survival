@@ -31,7 +31,8 @@ window.SurvivorRPG.Game = class Game {
     this.reservePokemon = [];
     this.balls = { pokeBall: 10 };
     this.money = 150;
-    this.journal=window.SurvivorRPG.SaveStore.readJournal();
+    this.store=window.SurvivorRPG.SaveStore.forMode('battle');
+    this.journal=this.store.readJournal();
     this.runStats={defeats:0,earned:0,caught:[],damage:{},rewards:[]};
     this.autosaveTimer=0;
     this.suspended=false;
@@ -336,7 +337,9 @@ window.SurvivorRPG.Game = class Game {
     if (this.mode === "gameOver") return;
 
     if (this.input.consumeSwitch()) {
-      this.handleSwitchAction();
+      const moving = this.input.movementVector();
+      const sprinting = this.mode === 'trainer' && this.input.keys?.has('z') && Math.hypot(moving.x, moving.y) > 0;
+      if (this.nearbyNpc || !sprinting) this.handleSwitchAction();
     }
     if (this.input.consumeBall()) {
       this.handleBallAction();
@@ -481,13 +484,6 @@ window.SurvivorRPG.Game = class Game {
     if (npc.type === "HEALER") {
       this.healParty();
       this.saveGame(true);
-      return;
-    }
-    if (npc.type === "SHOP") {
-      this.menuOpen = true;
-      this.menuView = "mart";
-      this.message(npc.dialogue, 1.4);
-      this.ui.showGameMenu(this);
       return;
     }
     if (npc.type === "RETURN_GUIDE") {
@@ -699,7 +695,7 @@ window.SurvivorRPG.Game = class Game {
         this.journal.firstRewards[target.id]=true;this.money+=100;this.runStats.earned+=100;
         this.runStats.rewards.push(`${target.name} 첫 연구 +100원`);
         if(target.survival&&this.survival)this.survival.stats.earned+=100;
-        window.SurvivorRPG.SaveStore.writeJournal(this.journal);
+        this.store.writeJournal(this.journal);
       }
       this.message(`${target.name} 포획! +${reward}원${firstResearch?' · 첫 연구 +100원':''}`, 2.8);
       this.enemies = this.enemies.filter((enemy) => enemy !== target);
@@ -793,7 +789,7 @@ window.SurvivorRPG.Game = class Game {
       this.message('첫 5마리 조사 완료! 연구비 50원',2);
     }
     this.grantEliteReward(enemy);
-    window.SurvivorRPG.SaveStore.writeJournal(this.journal);
+    this.store.writeJournal(this.journal);
     if(enemy.survival && this.survival)this.survival.stats.earned+=money;
     const survival = enemy.survival ? this.survival : null;
     if (survival) survival.kills += 1;
@@ -1051,6 +1047,7 @@ window.SurvivorRPG.Game = class Game {
   }
 
   openMenuView(view, index = 0) {
+    if (view === 'mart') view = 'main';
     if (this.awaitingStarter && !['starterSelect', 'starterConfirm'].includes(view)) return;
     this.menuView = view;
     this.menuSelectedPokemonIndex = index;
@@ -1072,6 +1069,18 @@ window.SurvivorRPG.Game = class Game {
       bagTarget: "bag"
     }[this.menuView] || "main";
     this.openMenuView(previous);
+  }
+
+  returnToOpening() {
+    if (!this.saveGame(true)) {
+      this.message('진행 상황을 저장하지 못했습니다. 리포트를 확인한 뒤 다시 시도해 주세요.', 3);
+      return false;
+    }
+    const url = new URL(location.href);
+    url.searchParams.delete('mode');
+    url.hash = '';
+    location.assign(url.href);
+    return true;
   }
 
   swapPartySlots(a, b) {
@@ -1220,9 +1229,9 @@ window.SurvivorRPG.Game = class Game {
 
   beginStarterJourney() {
     this.journal.awaitingStarter=true;
-    window.SurvivorRPG.SaveStore.writeJournal(this.journal);
-    localStorage.removeItem('scientistRpgSave');
-    localStorage.removeItem('scientistRpgSave.backup');
+    this.store.writeJournal(this.journal);
+    localStorage.removeItem(this.store.key);
+    localStorage.removeItem(this.store.backup);
     this.reset({starterPending:true});
     this.awaitingStarter = true;
     this.ownedPokemon = [];
@@ -1318,8 +1327,8 @@ window.SurvivorRPG.Game = class Game {
     // Never checkpoint halfway through a growth choice: its reward is not committed yet.
     if(['levelChoice','moveLearn','transition'].includes(this.mode)||this.levelUpQueue.length)return false;
     try {
-      window.SurvivorRPG.SaveStore.write(this.serializeRun());
-      window.SurvivorRPG.SaveStore.writeJournal(this.journal);
+      this.store.write(this.serializeRun());
+      this.store.writeJournal(this.journal);
       if(!quiet){this.message('리포트를 작성했다.',1.8);this.ui.showGameMenu(this);}
       return true;
     } catch {this.message('저장하지 못했습니다. 리포트 내보내기로 보관해 주세요.',2);return false;}
@@ -1327,7 +1336,7 @@ window.SurvivorRPG.Game = class Game {
 
   loadGame(imported=null) {
     let report;
-    try {report=imported?{data:window.SurvivorRPG.SaveStore.validate(imported)}:window.SurvivorRPG.SaveStore.read();}catch{}
+    try {report=imported?{data:this.store.validate(imported)}:this.store.read();}catch{}
     if (!report) {
       this.message("불러올 수 있는 리포트가 없습니다. 현재 진행은 유지됩니다.", 2);
       return false;

@@ -124,17 +124,17 @@ const text = '// Generated from Anil PBS/items.txt, pokemon.txt, moves.txt and p
   + 'window.SurvivorRPG.MegaForms = '+JSON.stringify(megaForms,null,2)+';\n';
 fs.writeFileSync(path.join(root,'js/data/battleRewardData.js'),text);
 const typeNames = {normal:'노말',fire:'불꽃',water:'물',electric:'전기',grass:'풀',ice:'얼음',fighting:'격투',poison:'독',ground:'땅',flying:'비행',psychic:'에스퍼',bug:'벌레',rock:'바위',ghost:'고스트',dragon:'드래곤',dark:'악',steel:'강철',fairy:'페어리'};
-const lines = ['# 추가 포켓몬 60종','', '타입별 대표 포켓몬을 선정한 목록이며, 통계에 근거한 인기 순위는 아닙니다.',
+const lines = ['# 추가 포켓몬 150종','', '타입별 대표 포켓몬을 선정한 목록이며, 통계에 근거한 인기 순위는 아닙니다.',
   '타입과 종족값은 Anil 원본 기준입니다. 본가와 다른 타입도 원본대로 유지합니다.',
   '표의 레벨은 야생 출현 시작 레벨이며, 진화 레벨과는 별개입니다.',
   '모든 종은 해당 레벨대 사냥터에서 포획하거나 포함된 진화 계열을 통해 얻을 수 있습니다.',''];
-for(const generation of [2,3]) {
+for(const generation of [2,3,4,5,6]) {
   lines.push('## '+generation+'세대 (30종)','','| 번호 | 포켓몬 | 타입 | 출현 레벨 |','| --- | --- | --- | --- |');
   for(const p of Object.values(expansion).filter(p=>p.generation===generation).sort((a,b)=>a.dexNo-b.dexNo))
     lines.push('| '+p.dexNo+' | '+p.name+' | '+p.types.map(t=>typeNames[t]).join(' / ')+' | '+p.level+' |');
   lines.push('');
 }
-lines.push('## 진화 범위','','2·3세대 추가 목록 및 기존 1세대 안에서 연결되는 진화만 활성화합니다.',
+lines.push('## 진화 범위','','2~6세대 추가 목록 및 기존 1세대 안에서 연결되는 진화만 활성화합니다.',
   '미수록 후속 세대 진화형이 있는 종은 최종 진화형으로 오인해 메가진화를 제공하지 않습니다.',
   '친밀도·아이템 등 레벨 외 조건은 현재 게임에 맞춰 Lv.28 진화로 변환합니다.');
 fs.writeFileSync(path.join(root,'POKEMON_ROSTER.md'),lines.join('\n')+'\n');

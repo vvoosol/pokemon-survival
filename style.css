@@ -57,6 +57,7 @@ button {
   position: relative;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: #000;
 }
@@ -75,6 +76,71 @@ button {
   background: #223827;
   transform: translate(-50%, -50%) scale(var(--screen-scale));
   transform-origin: center;
+}
+
+.mode-select-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, .72);
+}
+
+.mode-select-overlay[hidden] {
+  display: none;
+}
+
+.mode-select-window {
+  width: 520px;
+  padding: 26px 28px;
+  color: #fff;
+  background: url("assets/ui/pause/bgTop.png") top / 100% 24px no-repeat,
+    url("assets/ui/pause/bgBtm.png") bottom / 100% 24px no-repeat,
+    url("assets/ui/pause/bgMid.png") center / 100% 4px repeat-y;
+  image-rendering: pixelated;
+}
+
+.mode-select-window h1 {
+  margin: 0 0 16px;
+  font-size: 31px;
+  font-weight: 400;
+  text-align: center;
+}
+
+.mode-select-button {
+  width: 100%;
+  min-height: 108px;
+  margin: 8px 0;
+  padding: 12px 16px;
+  border: 6px solid transparent;
+  color: #fff;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mode-select-button:hover,
+.mode-select-button:focus-visible {
+  border-image: url("assets/ui/pause/selector.png") 8 stretch;
+  outline: 0;
+}
+
+.mode-select-button strong,
+.mode-select-button span {
+  display: block;
+}
+
+.mode-select-button strong {
+  font-size: 30px;
+  font-weight: 400;
+}
+
+.mode-select-button span {
+  margin-top: 6px;
+  font-size: 21px;
+  opacity: .9;
 }
 
 #gameCanvas {
@@ -386,6 +452,30 @@ button {
   overflow-wrap: anywhere;
   pointer-events: none;
 }
+
+.story-dialog {
+  position: absolute;
+  z-index: 40;
+  left: 140px;
+  right: 140px;
+  bottom: 24px;
+  padding: 22px 28px;
+  color: #fff;
+  background: url("assets/ui/pause/bgTop.png") top / 100% 16px no-repeat,
+    url("assets/ui/pause/bgBtm.png") bottom / 100% 16px no-repeat,
+    url("assets/ui/pause/bgMid.png") center / 100% 4px repeat-y;
+  border: 0;
+  font-size: 24px;
+  line-height: 1.45;
+  white-space: pre-line;
+  max-height: 540px;
+  overflow: auto;
+}
+.story-dialog[hidden] { display: none; }
+.story-dialog-choices { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
+.story-dialog button { font: inherit; color: #fff; border: 2px solid #eee; background: #303b43; padding: 6px 18px; }
+.story-dialog button:focus-visible { outline: 3px solid #fca23e; }
+#gameRoot[data-story-no-party="true"] :is(.player-hud,.party-panel,.move-hud) { visibility: hidden; }
 
 .fullscreen-button,
 .player-hud,
@@ -1273,7 +1363,6 @@ button {
 .menu-window--compact [data-selectable].is-selected::before { content: none; }
 .menu-window--compact .menu-title { font-size: 30px; }
 .menu-window--compact .professor-notice { font-size: 24px; }
-.menu-overlay[data-view="pokemon"], .menu-overlay[data-view="summary"] { background: #000; }
 .screen-frame:has(#mainMenuOverlay:not([hidden])) :is(.player-hud,.party-panel,.move-hud,.message-box,.level-toast,.survival-hud,.gameboy-controls,.fullscreen-button) { visibility: hidden; }
 #gameRoot[data-awaiting-starter="true"] :is(.player-hud,.party-panel,.move-hud,.gameboy-controls) { visibility: hidden; }
 .menu-overlay[data-view="main"] { background: transparent; }
@@ -1349,3 +1438,17 @@ button {
     opacity: 0.82;
   }
 }
+
+/* Keep the field visible around every panel in the same 16:9 frame. */
+.menu-overlay:not([data-view="main"]) { background: rgba(3, 9, 13, .28); }
+.menu-window--compact { max-height: 672px; overflow-y: auto; }
+.menu-overlay[data-view="settings"] .menu-window { width: 500px; }
+.menu-overlay:not([data-view="main"]) .menu-window:not(.menu-window--compact) {
+  transform: scale(.9); transform-origin: center; border-radius: 12px;
+  box-shadow: 0 0 0 3px #c9e3ee, 0 12px 36px #12273888;
+}
+.menu-overlay .native-screen { left: 50%; top: 50%; transform: translate(-50%, -50%) scale(1.875); transform-origin: center; }
+.anil-summary-name { font-size: 19px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.anil-summary-data { font-size: 17px; grid-template-columns: 100px 1fr; }
+.anil-summary-data dd { overflow-wrap: anywhere; }
+.anil-summary-note { font-size: 16px; max-height: 74px; overflow-y: auto; }

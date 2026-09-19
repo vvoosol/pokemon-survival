@@ -31,6 +31,7 @@ window.SurvivorRPG.InputManager = class InputManager {
       }
       if (event.key === "z" || event.key === "Z") {
         event.preventDefault();
+        this.keys.add('z');
         if (!event.repeat) this.switchPressed = true;
       }
       if (event.key === "x" || event.key === "X" || event.key === "c" || event.key === "C") {
@@ -81,6 +82,7 @@ window.SurvivorRPG.InputManager = class InputManager {
     window.addEventListener("keyup", (event) => {
       this.keys.delete(event.key.toLowerCase());
     });
+    window.addEventListener('blur', () => { this.keys.clear(); this.switchPressed = false; });
   }
 
   bindTouch() {
