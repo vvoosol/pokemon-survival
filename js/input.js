@@ -29,7 +29,7 @@ window.SurvivorRPG.InputManager = class InputManager {
         event.preventDefault();
         this.keys.add(event.key.toLowerCase());
       }
-      if (event.key === "z" || event.key === "Z") {
+      if (event.code === "KeyZ" || event.key === "z" || event.key === "Z") {
         event.preventDefault();
         this.keys.add('z');
         if (!event.repeat) this.switchPressed = true;
@@ -80,7 +80,8 @@ window.SurvivorRPG.InputManager = class InputManager {
     });
 
     window.addEventListener("keyup", (event) => {
-      this.keys.delete(event.key.toLowerCase());
+      if (event.code === "KeyZ") this.keys.delete('z');
+      else this.keys.delete(event.key.toLowerCase());
     });
     window.addEventListener('blur', () => { this.keys.clear(); this.switchPressed = false; });
   }

@@ -63,6 +63,14 @@ const fs = require('node:fs');
       g.input.keys.clear();return {walk,run};
     });
     assert.ok(Math.abs(speed.run-speed.walk*2)<1e-9); console.log('PASS sprint',speed);
+    const imeZ = await page.evaluate(() => {
+      const input=currentSurvivorRPG.input;
+      window.dispatchEvent(new KeyboardEvent('keydown',{key:'ㅋ',code:'KeyZ',bubbles:true}));
+      const down=input.keys.has('z');
+      window.dispatchEvent(new KeyboardEvent('keyup',{key:'ㅋ',code:'KeyZ',bubbles:true}));
+      return {down,up:!input.keys.has('z')};
+    });
+    assert.deepEqual(imeZ,{down:true,up:true}); console.log('PASS physical KeyZ across IME',imeZ);
     await page.evaluate(async () => {
       const g=currentSurvivorRPG; await g.transferStory(9,23,28);g.storyBusy=false;
       window.battleResult=g.runStoryProxy(42,16);

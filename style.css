@@ -459,21 +459,22 @@ button {
   left: 140px;
   right: 140px;
   bottom: 24px;
-  padding: 22px 28px;
+  padding: 18px 22px;
   color: #fff;
-  background: url("assets/ui/pause/bgTop.png") top / 100% 16px no-repeat,
-    url("assets/ui/pause/bgBtm.png") bottom / 100% 16px no-repeat,
-    url("assets/ui/pause/bgMid.png") center / 100% 4px repeat-y;
-  border: 0;
-  font-size: 24px;
-  line-height: 1.45;
+  background: rgba(24, 32, 46, 0.96);
+  border: 2px solid #dce8f7;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(67, 86, 142, 0.75), 0 5px 16px rgba(0, 0, 0, 0.28);
+  font-size: 31px;
+  line-height: 1.38;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.7);
   white-space: pre-line;
   max-height: 540px;
   overflow: auto;
 }
 .story-dialog[hidden] { display: none; }
 .story-dialog-choices { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
-.story-dialog button { font: inherit; color: #fff; border: 2px solid #eee; background: #303b43; padding: 6px 18px; }
+.story-dialog button { font: inherit; font-size: .78em; color: #fff; border: 1px solid #dce8f7; border-radius: 5px; background: #303b43; padding: 7px 16px; }
 .story-dialog button:focus-visible { outline: 3px solid #fca23e; }
 #gameRoot[data-story-no-party="true"] :is(.player-hud,.party-panel,.move-hud) { visibility: hidden; }
 
