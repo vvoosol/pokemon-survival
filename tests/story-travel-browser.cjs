@@ -94,6 +94,20 @@ const fs = require('node:fs');
     });
     assert.deepEqual(fieldItem,{registered:true,gained:1,erased:true,stillVisible:false});
     console.log('PASS field Pokeball is collected with Z',fieldItem);
+    const captureRender = await page.evaluate(() => {
+      const g = currentSurvivorRPG;
+      const originalTransition = g.transition;
+      const originalDrawCaptureSequence = g.drawCaptureSequence;
+      let calls = 0;
+      g.transition = {type:'capture',timer:.4,duration:1,startX:g.trainer.x,startY:g.trainer.y,endX:g.trainer.x+32,endY:g.trainer.y};
+      g.drawCaptureSequence = () => { calls += 1; };
+      g.draw();
+      g.drawCaptureSequence = originalDrawCaptureSequence;
+      g.transition = originalTransition;
+      return calls;
+    });
+    assert.equal(captureRender,1);
+    console.log('PASS story mode renders capture throw transition');
     const routeSafety = await page.evaluate(async () => {
       const g=currentSurvivorRPG;await g.transferStory(4,52,38);g.storyBusy=false;
       const active=g.storyRenderer.activeEvents(g.story);

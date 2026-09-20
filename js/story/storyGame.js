@@ -1275,7 +1275,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     this.storyRenderer.draw(ctx, this.camera, this.story, performance.now() / 1000, actors, this.storyPositions,
       this.erasedStoryEvents, this.hiddenStoryNativeEvents());
     this.drawStoryProxies(ctx);
-    this.combatSystem.drawEffects(ctx, this.camera); this.drawSwitchFlash(); ctx.restore();
+    this.combatSystem.drawEffects(ctx, this.camera); this.drawTransitionEffects(); this.drawSwitchFlash(); ctx.restore();
     for (const {name, parameters: p} of [...this.pictures.entries()].sort((a, b) => a[0] - b[0]).map(entry => entry[1])) {
       const image = this.storyPictures.get(name); if (!image) continue;
       const width = image.width * p[6] / 100, height = image.height * p[7] / 100;
