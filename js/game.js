@@ -502,6 +502,13 @@ window.SurvivorRPG.Game = class Game {
       this.saveGame(true);
       return;
     }
+    if (npc.type === "SHOP") {
+      this.menuOpen = true;
+      this.menuView = "mart";
+      this.message(npc.dialogue, 1.4);
+      this.ui.showGameMenu(this);
+      return;
+    }
     if (npc.type === "RETURN_GUIDE") {
       this.travelToHub();
     }
@@ -1063,7 +1070,6 @@ window.SurvivorRPG.Game = class Game {
   }
 
   openMenuView(view, index = 0) {
-    if (view === 'mart') view = 'main';
     if (this.awaitingStarter && !['starterSelect', 'starterConfirm'].includes(view)) return;
     this.menuView = view;
     this.menuSelectedPokemonIndex = index;

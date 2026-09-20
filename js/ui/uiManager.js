@@ -331,6 +331,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     else if (game.menuView === "areaSelect") this.renderAreaSelectMenu(game);
     else if (game.menuView === "bag") this.renderBagMenu(game);
     else if (game.menuView === "bagTarget") this.renderBagTargetMenu(game);
+    else if (game.menuView === "mart") this.renderMartMenu(game);
     else if (game.menuView === "report") this.renderReportMenu(game);
     else if (game.menuView === "settings") this.renderSettingsMenu(game);
     else if (game.menuView === "formation") this.renderFormationMenu(game);
@@ -631,6 +632,42 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.menuRoot.dataset.columns = "1";
     this.bindMenuButton("[data-potion-target]", (button) => game.usePotion(Number(button.dataset.potionTarget)));
     this.bindMenuButton("[data-action='back']", () => game.openMenuView("bag"), "cancel");
+  }
+
+  renderMartMenu(game) {
+    const items = window.SurvivorRPG.ItemData;
+    this.menuRoot.innerHTML = `
+      <section class="mart-screen">
+        <div class="menu-title">포켓마트</div>
+        <strong class="mart-money">${game.money}원</strong>
+        <div class="mart-content">
+          <div class="item-list">
+            ${this.martRow("pokeBall", items.pokeBall, game.balls.pokeBall)}
+            ${this.martRow("potion", items.potion, game.items.potion || 0)}
+            ${this.martRow("expShare", items.expShare, game.items.expShare ? "보유" : 0, game.items.expShare)}
+            ${this.martRow("doubleBattle", items.doubleBattle, game.items.doubleBattle ? "보유" : 0, game.items.doubleBattle)}
+            ${this.martRow("tripleBattle", items.tripleBattle, game.items.tripleBattle ? "보유" : 0, game.items.tripleBattle)}
+          </div>
+          <div class="item-description">Z를 누르면 1개를 구매합니다.</div>
+        </div>
+        <div class="menu-footer"><button class="menu-action" data-action="back" data-selectable>뒤로</button></div>
+      </section>
+    `;
+    this.menuRoot.dataset.columns = "1";
+    this.bindMenuButton("[data-buy]", (button) => {
+      if (game.buyItem(button.dataset.buy)) game.assets.play("uiBuy", 0.42);
+    });
+    this.bindMenuButton("[data-action='back']", () => game.openMenuView("main"), "cancel");
+  }
+
+  martRow(id, item, amount, disabled = false) {
+    return `
+      <button class="item-row" data-buy="${id}" data-description="${item.description}" ${disabled ? "disabled" : "data-selectable"}>
+        <img class="item-icon" src="${item.icon}" alt="">
+        <strong>${item.name}<br><small>${item.description}</small></strong>
+        <span>${item.price}원 · ${amount}</span>
+      </button>
+    `;
   }
 
   renderReportMenu(game) {

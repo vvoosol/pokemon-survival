@@ -28,6 +28,12 @@ const fs = require('node:fs');
       const img = currentSurvivorRPG.assets.image(key); return [img.width, img.height];
     })), [[240, 256], [240, 256], [240, 256]]);
     await screenshot('npc-hub');
+    // The battle hub shop clerk must open the restored Pokemart UI through normal Z interaction.
+    await page.evaluate(() => { const g = currentSurvivorRPG; g.trainer.x = 1040; g.trainer.y = 590; });
+    await press('z');
+    assert.equal(await page.evaluate(() => currentSurvivorRPG.menuView), 'mart');
+    assert.equal(await page.locator('[data-buy="pokeBall"]').count(), 1);
+    await page.evaluate(() => { const g = currentSurvivorRPG; g.menuOpen = false; g.ui.hideGameMenu(); });
     // Actual Z interaction with Brock, then the area-selection button.
     await page.evaluate(() => { const g = currentSurvivorRPG; g.trainer.x = 760; g.trainer.y = 490; });
     await press('z');

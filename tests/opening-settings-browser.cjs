@@ -31,7 +31,7 @@ const fs = require('node:fs');
       await page.keyboard.press('Enter');
       await page.evaluate(() => currentSurvivorRPG.tick(.016));
       assert.equal(await page.locator('[data-view="mart"]').count(), 0);
-      assert.equal(await page.evaluate(() => SurvivorRPG.Maps.hub.npcs.some(n => n.type === 'SHOP')), false);
+      assert.equal(await page.evaluate(() => SurvivorRPG.Maps.hub.npcs.some(n => n.type === 'SHOP')), true);
       assert.equal(await page.evaluate(() => SurvivorRPG.Maps.hub.objects.some(o => o.art === 'shop')), false);
       await page.locator('button[data-view="settings"]').click();
       for (const viewport of [{width:1280,height:720}, {width:1920,height:1080}, {width:390,height:844}, {width:844,height:390}]) {
@@ -116,7 +116,7 @@ const fs = require('node:fs');
       await page.locator('#newGameConfirmBtn').tap();
       await page.waitForFunction(mode => !localStorage.getItem(mode === 'story' ? 'scientistRpgStorySave' : 'scientistRpgSave'), mode);
       assert.deepEqual(errors, []);
-      console.log(`PASS ${mode}: saved opening return, load/restart prompt, no mart, field backdrop and bounded menus/dialog on four viewports`);
+      console.log(`PASS ${mode}: saved opening return, load/restart prompt, battle shop registry retained, field backdrop and bounded menus/dialog on four viewports`);
       await page.close();
     }
   } finally { await browser.close(); }
