@@ -73,6 +73,11 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     choices.className = 'story-dialog-choices'; box.append(text, choices);
     document.getElementById('screenFrame').append(box);
     this.storyDialog = {box, text, choices, resolve: null, selected: 0, buttons: [], navCooldown: 0, recovery: false};
+    document.getElementById('switchActionBtn')?.addEventListener('pointerdown', event => {
+      if (event.button !== 0 || !this.storyDialog?.resolve) return;
+      event.preventDefault();
+      this.answerStory(this.storyDialog.selected);
+    });
   }
   storyText(text) {
     const translated = this.translateStoryText(String(text));

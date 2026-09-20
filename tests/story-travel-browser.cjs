@@ -5,7 +5,7 @@ const {pathToFileURL} = require('node:url');
 const fs = require('node:fs');
 (async () => {
   const browser = await chromium.launch({channel: 'chrome', headless: true});
-  const page = await browser.newPage({viewport: {width:1280,height:720}});
+  const page = await browser.newPage({viewport: {width:1280,height:720}, hasTouch: true});
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('requestfailed', r => {
@@ -20,6 +20,15 @@ const fs = require('node:fs');
     await page.goto(url);
     await page.waitForFunction(() => currentSurvivorRPG?.storyRenderer?.map && !currentSurvivorRPG.storyBusy, {timeout:30000});
     console.log('PASS static HTML boot', url);
+    await page.waitForSelector('.story-dialog:not([hidden])');
+    const openingText = await page.locator('.story-dialog').innerText();
+    assert.ok(openingText.includes('오박사에게 가 보자'));
+    assert.equal(await page.locator('.gameboy-controls').evaluate(el => getComputedStyle(el).visibility), 'visible');
+    const zBox = await page.locator('#switchActionBtn').boundingBox();
+    assert.ok(zBox);
+    await page.touchscreen.tap(zBox.x + zBox.width / 2, zBox.y + zBox.height / 2);
+    await page.waitForFunction(() => !currentSurvivorRPG.storyDialog?.resolve);
+    console.log('PASS opening dialog advances with touch Z');
     await page.evaluate(async () => {
       const g = currentSurvivorRPG; g.suspended = true;
       g.tick = g.update.bind(g); g.update = () => {};
@@ -110,6 +119,25 @@ const fs = require('node:fs');
       g.input.keys.clear();return {walk,run};
     });
     assert.ok(Math.abs(speed.run-speed.walk*2)<1e-9); console.log('PASS sprint',speed);
+    const holdBox = await page.locator('#switchActionBtn').boundingBox();
+    assert.ok(holdBox);
+    await page.mouse.move(holdBox.x + holdBox.width / 2, holdBox.y + holdBox.height / 2);
+    await page.mouse.down();
+    assert.equal(await page.evaluate(() => currentSurvivorRPG.input.keys.has('z')), true);
+    const touchSprint = await page.evaluate(() => {
+      const g=currentSurvivorRPG, t=g.trainer;
+      const world={width:2000,height:2000,colliders:[]};
+      t.x=t.y=500;
+      g.input.joystickVector={x:1,y:0};
+      t.update(.5,g.input,g.movementSystem,world);
+      const run=t.x-500;
+      g.input.joystickVector={x:0,y:0};
+      return run;
+    });
+    await page.mouse.up();
+    assert.equal(await page.evaluate(() => currentSurvivorRPG.input.keys.has('z')), false);
+    assert.ok(Math.abs(touchSprint-speed.walk*2)<1e-9);
+    console.log('PASS held on-screen Z enables 2x sprint',touchSprint);
     const imeZ = await page.evaluate(() => {
       const input=currentSurvivorRPG.input;
       window.dispatchEvent(new KeyboardEvent('keydown',{key:'ㅋ',code:'KeyZ',bubbles:true}));

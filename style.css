@@ -1377,7 +1377,7 @@ button {
 .menu-window--compact .menu-title { font-size: 30px; }
 .menu-window--compact .professor-notice { font-size: 24px; }
 .screen-frame:has(#mainMenuOverlay:not([hidden])) :is(.player-hud,.party-panel,.move-hud,.message-box,.level-toast,.survival-hud,.fullscreen-button) { visibility: hidden; }
-#gameRoot[data-awaiting-starter="true"] :is(.player-hud,.party-panel,.move-hud,.gameboy-controls) { visibility: hidden; }
+#gameRoot[data-awaiting-starter="true"] :is(.player-hud,.party-panel,.move-hud) { visibility: hidden; }
 .menu-overlay[data-view="main"] { background: transparent; }
 .menu-overlay[data-view="main"] .menu-window--compact { width: 388px; min-height: 0; margin: 12px 12px 0 auto; padding: 16px 12px; align-self: start; border: 0; outline: 0; background: url("assets/ui/pause/bgTop.png") top / 100% 24px no-repeat, url("assets/ui/pause/bgBtm.png") bottom / 100% 24px no-repeat, url("assets/ui/pause/bgMid.png") center / 100% 4px repeat-y; }
 .anil-pause-screen .menu-list { gap: 0; }

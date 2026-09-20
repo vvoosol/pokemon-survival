@@ -115,7 +115,7 @@ window.SurvivorRPG.InputManager = class InputManager {
     this.root.addEventListener("touchmove", (event) => event.preventDefault(), { passive: false });
     this.bindActionButton("switchActionBtn", () => {
       this.switchPressed = true;
-    });
+    }, { heldKey: 'z', activateOnPress: true });
     this.bindActionButton("ballActionBtn", () => {
       this.ballPressed = true;
     });
@@ -127,26 +127,34 @@ window.SurvivorRPG.InputManager = class InputManager {
     });
   }
 
-  bindActionButton(id, action) {
+  bindActionButton(id, action, options = {}) {
     const button = document.getElementById(id);
     if (!button) return;
+    const heldKey = options.heldKey || null;
+    const activateOnPress = !!options.activateOnPress;
     let pointer = null;
     button.addEventListener("pointerdown", (event) => {
       if (event.button !== 0 || pointer !== null) return;
       event.preventDefault();
       pointer = event.pointerId;
       button.setPointerCapture(pointer);
+      if (heldKey) this.keys.add(heldKey);
+      if (activateOnPress && !button.disabled) action();
     });
     // Commit once on release, before a new menu can receive another gesture.
     button.addEventListener("pointerup", (event) => {
       if (event.pointerId !== pointer) return;
       event.preventDefault();
       pointer = null;
+      if (heldKey) this.keys.delete(heldKey);
       const rect = button.getBoundingClientRect();
-      if (!button.disabled && event.clientX >= rect.left && event.clientX <= rect.right
+      if (!activateOnPress && !button.disabled && event.clientX >= rect.left && event.clientX <= rect.right
         && event.clientY >= rect.top && event.clientY <= rect.bottom) action();
     });
-    const cancel = () => { pointer = null; };
+    const cancel = () => {
+      pointer = null;
+      if (heldKey) this.keys.delete(heldKey);
+    };
     button.addEventListener("pointercancel", cancel);
     button.addEventListener("lostpointercapture", cancel);
     window.addEventListener("blur", cancel);
