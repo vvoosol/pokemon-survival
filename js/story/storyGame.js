@@ -750,6 +750,11 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     return !!page?.list?.some(command => [355, 655].includes(command.code) &&
       /\bpbEncounter\s*\(/.test(String(command.parameters?.[0] || '')));
   }
+  isPassiveStoryMarkerEvent(event, pageIndex) {
+    const page = event?.pages?.[pageIndex];
+    if (!page || !/^Slope$/i.test(String(event?.name || ''))) return false;
+    return page.list?.every(command => [0, 108, 408].includes(command.code)) || false;
+  }
   isCutTreeEvent(event, page) {
     const activePage = typeof page === 'number' ? event?.pages?.[page] : page;
     return !!activePage && activePage.through === false &&
@@ -938,7 +943,8 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
   }
   async runStoryEvent(event, pageIndex) {
     if (this.storyBusy || this.storyError || this.storyBattle || !['trainer', 'pokemon'].includes(this.mode)) return;
-    if (this.isStoryInteriorDoorEvent(event, pageIndex) || this.isLegacyStoryEncounterEvent(event, pageIndex)) return;
+    if (this.isStoryInteriorDoorEvent(event, pageIndex) || this.isLegacyStoryEncounterEvent(event, pageIndex) ||
+      this.isPassiveStoryMarkerEvent(event, pageIndex)) return;
     if (this.collectPokeballFieldEvent(event, pageIndex)) return;
     const blockedTransfer = this.unsupportedStoryTransfer(event, pageIndex);
     if (blockedTransfer) { await this.handleUnsupportedStoryTransfer(event, pageIndex, blockedTransfer); return; }
@@ -1050,6 +1056,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     const blocked = new Set(this.storyOutdoorPlan().blocked);
     const active = this.storyRenderer.activeEvents(this.story).filter(({event, pageIndex}) => !this.erasedStoryEvents.has(event.id) &&
       !blocked.has(event.id) && !this.isStoryInteriorDoorEvent(event, pageIndex) && !this.isLegacyStoryEncounterEvent(event, pageIndex) &&
+      !this.isPassiveStoryMarkerEvent(event, pageIndex) &&
       !(this.storyFailedEvent?.mapId === this.story.mapId && this.storyFailedEvent.eventId === event.id));
     const onUnsupportedTransfer = active.some(({event, pageIndex}) =>
       !!this.unsupportedStoryTransfer(event, pageIndex) && this.storyEventContains(event, tx, ty));

@@ -110,6 +110,19 @@ const fs = require('node:fs');
     });
     assert.deepEqual(route2LegacyStory,{ignored:true,passable:true,busy:false,error:undefined});
     console.log('PASS Route 2 legacy rival story is removed and path stays passable',route2LegacyStory);
+    const forestSlope = await page.evaluate(async () => {
+      const g=currentSurvivorRPG;
+      await g.transferStory(8,23,58);g.storyBusy=false;g.storyError=null;g.mode='trainer';
+      const event=g.storyRenderer.map.events[53], pageIndex=0;
+      const ignored=g.isPassiveStoryMarkerEvent(event,pageIndex);
+      const before={x:g.trainer.x,y:g.trainer.y};
+      g.input.keys=new Set(['w']);
+      g.suspended=false;g.tick(.05);g.suspended=true;
+      g.input.keys.clear();
+      return {ignored,moved:g.trainer.x!==before.x||g.trainer.y!==before.y,busy:g.storyBusy,error:g.storyError?.message};
+    });
+    assert.deepEqual(forestSlope,{ignored:true,moved:true,busy:false,error:undefined});
+    console.log('PASS Viridian Forest slope marker does not freeze movement',forestSlope);
     const fieldItem = await page.evaluate(async () => {
       const g=currentSurvivorRPG;
       await g.transferStory(10,11,36);g.storyBusy=false;g.mode='trainer';
