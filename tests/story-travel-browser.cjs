@@ -101,13 +101,17 @@ const fs = require('node:fs');
       if(!missing)throw Error('Unsupported transfer fixture missing');
       const pos=g.storyPositions[missing.event.id]||missing.event;
       const blocked=!SurvivorRPG.MovementSystem.canStand(g.map,(pos.x+.5)*32,(pos.y+.5)*32,10);
-      await g.runStoryEvent(missing.event,missing.pageIndex);
+      g.trainer.x=(52+.5)*32;g.trainer.y=(38+.5)*32;g.storyLastSafePosition={mapId:4,x:52,y:38,direction:2};
+      const ask=g.askStory,notices=[];g.askStory=async text=>{notices.push(text);return 0;};
+      await g.runStoryEvent(missing.event,missing.pageIndex);g.askStory=ask;
       g.suspended=false;g.tick(.05);g.suspended=true;
       return {blocked,stayed:g.story.mapId===4&&!g.storyError,
+        notice:notices[0],safeX:Math.floor(g.trainer.x/32),safeY:Math.floor(g.trainer.y/32),
         functionalOnly:g.map.npcs.every(n=>n.proxy||String(n.id).startsWith('cut-')||String(n.id).startsWith('field-item-')),
         nativeHidden:g.hiddenStoryNativeEvents().size>0};
     });
-    assert.deepEqual(routeSafety,{blocked:true,stayed:true,functionalOnly:true,nativeHidden:true});
+    assert.deepEqual(routeSafety,{blocked:true,stayed:true,notice:'아직 구현되지 않은 지역입니다.\n직전 위치로 돌아왔습니다.',
+      safeX:52,safeY:38,functionalOnly:true,nativeHidden:true});
     console.log('PASS blocked routes and filtered NPCs',routeSafety);
     const viridianWest = await page.evaluate(async () => {
       const g=currentSurvivorRPG;
@@ -124,11 +128,15 @@ const fs = require('node:fs');
       if(!westEdge)throw Error('Route 22 unsafe west transition missing');
       const westPos=g.storyPositions[westEdge.event.id]||westEdge.event;
       const westEdgeBlocked=!SurvivorRPG.MovementSystem.canStand(g.map,(westPos.x+.5)*32,(westPos.y+.5)*32,10);
-      await g.runStoryEvent(westEdge.event,westEdge.pageIndex);
+      g.trainer.x=(47+.5)*32;g.trainer.y=(17+.5)*32;g.storyLastSafePosition={mapId:5,x:47,y:17,direction:4};
+      const ask=g.askStory,notices=[];g.askStory=async text=>{notices.push(text);return 0;};
+      await g.runStoryEvent(westEdge.event,westEdge.pageIndex);g.askStory=ask;
       return {map:g.story.mapId,name:g.map.name,busy:g.storyBusy,error:g.storyError?.message,
-        rivalBlocked:g.storyOutdoorPlan().blocked.includes(11),westEdgeBlocked};
+        rivalBlocked:g.storyOutdoorPlan().blocked.includes(11),westEdgeBlocked,notice:notices[0],
+        x:Math.floor(g.trainer.x/32),y:Math.floor(g.trainer.y/32)};
     });
-    assert.deepEqual(viridianWest,{map:5,name:'22번도로',busy:false,error:undefined,rivalBlocked:true,westEdgeBlocked:true});
+    assert.deepEqual(viridianWest,{map:5,name:'22번도로',busy:false,error:undefined,rivalBlocked:true,westEdgeBlocked:true,
+      notice:'아직 구현되지 않은 지역입니다.\n직전 위치로 돌아왔습니다.',x:47,y:17});
     console.log('PASS Viridian west exit stays responsive',viridianWest);
     await page.screenshot({path:path.join(screenshots,'outdoor-doors.png')});
     const speed = await page.evaluate(() => {

@@ -22,6 +22,8 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     this.storyEntryPoint = null;
     this.storyFailedEvent = null;
     this.storyBaseColliders = [];
+    this.storyLastSafePosition = null;
+    this.storyBlockedTransferLatch = null;
   }
   reset() { super.reset({starterPending: true}); }
   resetAtProfessor() {
@@ -465,6 +467,36 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     return {story: snapshot, mapId: snapshot.mapId, x: snapshot.x, y: snapshot.y, direction,
       positions: structuredClone(this.storyPositions), erased: [...this.erasedStoryEvents]};
   }
+  captureStorySafePosition() {
+    if (!this.storyRenderer || !this.story?.mapId) return null;
+    const actor = this.activePokemon || this.trainer;
+    if (!actor) return null;
+    const direction = ({down: 2, left: 4, right: 6, up: 8})[actor.direction] || this.story.direction || 2;
+    return {mapId: Number(this.story.mapId), x: Math.floor(actor.x / 32), y: Math.floor(actor.y / 32), direction};
+  }
+  restoreStorySafePosition(position) {
+    if (!position || Number(position.mapId) !== Number(this.story?.mapId)) return false;
+    const actor = this.activePokemon || this.trainer;
+    if (!actor) return false;
+    actor.x = (position.x + .5) * 32; actor.y = (position.y + .5) * 32;
+    actor.direction = ({2: 'down', 4: 'left', 6: 'right', 8: 'up'})[position.direction] || actor.direction;
+    this.story.x = position.x; this.story.y = position.y; this.story.direction = position.direction || 2;
+    this.camera.follow(actor, 1);
+    return true;
+  }
+  async handleUnsupportedStoryTransfer(event, pageIndex, command) {
+    const key = `${this.story.mapId}:${event.id}:${pageIndex}`;
+    if (this.storyBlockedTransferLatch === key) return false;
+    this.storyBlockedTransferLatch = key;
+    const safe = this.storyLastSafePosition?.mapId === Number(this.story.mapId)
+      ? {...this.storyLastSafePosition} : this.captureStorySafePosition();
+    this.storyBusy = true;
+    try {
+      this.restoreStorySafePosition(safe);
+      await this.askStory('아직 구현되지 않은 지역입니다.\n직전 위치로 돌아왔습니다.', ['확인']);
+      return true;
+    } finally { this.storyBusy = false; }
+  }
   async recoverStoryState() {
     const snapshot = this.storyRecoverySnapshot;
     if (!snapshot || this.recovering) return false;
@@ -531,6 +563,8 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     this.mode = 'trainer'; this.activePokemon = null;
     this.story.mapId = id; this.story.x = x; this.story.y = y; this.story.direction = direction || 2;
     this.storyEntryPoint = {mapId: id, x, y};
+    this.storyLastSafePosition = {mapId: Number(id), x, y, direction: direction || 2};
+    this.storyBlockedTransferLatch = null;
     this.camera.x = this.trainer.x - this.camera.width / 2; this.camera.y = this.trainer.y - this.camera.height / 2; this.camera.clamp();
     this.autoruns.clear(); this.storyPositions = {}; this.erasedStoryEvents.clear();
     if (this.story.mapEvents?.mapId !== id) delete this.story.mapEvents;
@@ -882,7 +916,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (this.storyBusy || this.storyError || this.storyBattle || !['trainer', 'pokemon'].includes(this.mode)) return;
     if (this.collectPokeballFieldEvent(event, pageIndex)) return;
     const blockedTransfer = this.unsupportedStoryTransfer(event, pageIndex);
-    if (blockedTransfer) return;
+    if (blockedTransfer) { await this.handleUnsupportedStoryTransfer(event, pageIndex, blockedTransfer); return; }
     if (this.isLockedPalletExit(event)) {
       this.storyBusy = true;
       try {
@@ -981,6 +1015,9 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (this.mode === 'gameOver') { this.restartAfterDefeat(); return; }
     document.getElementById('gameRoot').dataset.storyNoParty = String(this.partyPokemon.length === 0);
     const actor = this.activePokemon || this.trainer, tx = Math.floor(actor.x / 32), ty = Math.floor(actor.y / 32);
+    const movementVector = this.input.movementVector();
+    if (this.storyBlockedTransferLatch && Math.hypot(movementVector.x, movementVector.y) < .2)
+      this.storyBlockedTransferLatch = null;
     if (this.storyPreviousMapState && this.storyEntryPoint?.mapId === this.story.mapId &&
       (tx !== this.storyEntryPoint.x || ty !== this.storyEntryPoint.y)) { this.storyPreviousMapState = null; this.storyEntryPoint = null; }
     if (this.storyFailedEvent && (this.storyFailedEvent.mapId !== this.story.mapId || tx !== this.storyFailedEvent.x || ty !== this.storyFailedEvent.y))
@@ -988,6 +1025,9 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     const blocked = new Set(this.storyOutdoorPlan().blocked);
     const active = this.storyRenderer.activeEvents(this.story).filter(({event}) => !this.erasedStoryEvents.has(event.id) && !blocked.has(event.id) &&
       !(this.storyFailedEvent?.mapId === this.story.mapId && this.storyFailedEvent.eventId === event.id));
+    const onUnsupportedTransfer = active.some(({event, pageIndex}) =>
+      !!this.unsupportedStoryTransfer(event, pageIndex) && this.storyEventContains(event, tx, ty));
+    if (!onUnsupportedTransfer) this.storyLastSafePosition = this.captureStorySafePosition();
     const autorun = active.find(({event, pageIndex, page}) => page.trigger === 3 && !this.autoruns.has(`${event.id}:${pageIndex}`));
     if (autorun) { this.autoruns.add(`${autorun.event.id}:${autorun.pageIndex}`); this.runStoryEvent(autorun.event, autorun.pageIndex); return; }
     if (this.story.mapId === 1 && this.story.switches[179] && !this.story.switches[180]) {
@@ -1005,10 +1045,9 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     this.story.playTime += dt;
     const touching = active.find(({event, page}) => [1, 2].includes(page.trigger) && this.storyEventContains(event, tx, ty) && page.list.some(c => c.code !== 0));
     if (touching) { this.runStoryEvent(touching.event, touching.pageIndex); return; }
-    const vector = this.input.movementVector();
-    if (Math.hypot(vector.x, vector.y) > 0) {
-      const dx = Math.abs(vector.x) > Math.abs(vector.y) ? Math.sign(vector.x) : 0;
-      const dy = dx ? 0 : Math.sign(vector.y);
+    if (Math.hypot(movementVector.x, movementVector.y) > 0) {
+      const dx = Math.abs(movementVector.x) > Math.abs(movementVector.y) ? Math.sign(movementVector.x) : 0;
+      const dy = dx ? 0 : Math.sign(movementVector.y);
       const blocked = !window.SurvivorRPG.MovementSystem.canStand(this.map, (tx + dx + .5) * 32, (ty + dy + .5) * 32, actor.radius);
       const bump = blocked && active.find(({event, page}) => [1, 2].includes(page.trigger) && this.storyEventContains(event, tx + dx, ty + dy) && page.list.some(c => c.code !== 0));
       if (bump) { this.runStoryEvent(bump.event, bump.pageIndex); return; }
