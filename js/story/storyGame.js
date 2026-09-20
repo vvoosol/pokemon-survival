@@ -859,11 +859,16 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
   }
   isPokeballFieldEvent(event, pageIndex) {
     const page = event?.pages?.[pageIndex];
-    return /objeto/i.test(String(page?.graphic?.character_name || ''));
+    if (!page) return false;
+    const identity = `${event?.name || ''} ${page.graphic?.character_name || ''}`;
+    if (/objeto|item|pok[eé]?ball|ball/i.test(identity)) return true;
+    return page.list?.some(command => [355, 655].includes(command.code) &&
+      /\bpbItemBall\s*\(/.test(String(command.parameters?.[0] || ''))) || false;
   }
   collectPokeballFieldEvent(event, pageIndex) {
     if (!this.isPokeballFieldEvent(event, pageIndex)) return false;
     this.erasedStoryEvents.add(event.id);
+    if (this.map?.npcs) this.map.npcs = this.map.npcs.filter(npc => npc.id !== `field-item-${event.id}`);
     this.receiveStoryItem('POKEBALL', 1);
     this.story.mapEvents = {
       mapId: this.story.mapId,
@@ -1008,9 +1013,13 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
       const pos = this.storyPositions[event.id] || event;
       return {id: `cut-${event.id}`, type: 'STORY_OBJECT', x: (pos.x + .5) * 32, y: (pos.y + .5) * 32, event, pageIndex};
     });
+    const fieldItemTargets = active.filter(({event, pageIndex, page}) => page.trigger === 0 && this.isPokeballFieldEvent(event, pageIndex)).map(({event, pageIndex}) => {
+      const pos = this.storyPositions[event.id] || event;
+      return {id: `field-item-${event.id}`, type: 'STORY_ITEM', name: '', x: (pos.x + .5) * 32, y: (pos.y + .5) * 32, event, pageIndex};
+    });
     const proxyNpcs = this.storyProxyNpcs.map(proxy => ({...proxy, name: proxy.label,
       x: (proxy.x + .5) * 32, y: (proxy.y + .5) * 32}));
-    this.map.npcs = [...cutTargets, ...proxyNpcs];
+    this.map.npcs = [...fieldItemTargets, ...cutTargets, ...proxyNpcs];
     super.update(dt);
   }
   updateNearbyNpc() {

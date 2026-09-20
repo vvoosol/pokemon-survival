@@ -80,6 +80,20 @@ const fs = require('node:fs');
     });
     assert.deepEqual(storyFixes,{sellerWorks:true,treeBlocked:true,treeOpened:true});
     console.log('PASS Viridian seller and Cut tree collision',storyFixes);
+    const fieldItem = await page.evaluate(async () => {
+      const g=currentSurvivorRPG;
+      await g.transferStory(10,11,36);g.storyBusy=false;g.mode='trainer';
+      g.trainer.x=(11+.5)*32;g.trainer.y=(36+.5)*32;
+      g.suspended=false;g.tick(.05);g.suspended=true;
+      const target=g.map.npcs.find(n=>n.id==='field-item-20');
+      if(!target)throw Error('Route 3 field item is not registered for Z interaction');
+      const before=g.balls.pokeBall;
+      g.input.switchPressed=true;
+      g.suspended=false;g.tick(.05);g.suspended=true;
+      return {registered:true,gained:g.balls.pokeBall-before,erased:g.erasedStoryEvents.has(20),stillVisible:g.map.npcs.some(n=>n.id==='field-item-20')};
+    });
+    assert.deepEqual(fieldItem,{registered:true,gained:1,erased:true,stillVisible:false});
+    console.log('PASS field Pokeball is collected with Z',fieldItem);
     const routeSafety = await page.evaluate(async () => {
       const g=currentSurvivorRPG;await g.transferStory(4,52,38);g.storyBusy=false;
       const active=g.storyRenderer.activeEvents(g.story);
@@ -90,7 +104,7 @@ const fs = require('node:fs');
       await g.runStoryEvent(missing.event,missing.pageIndex);
       g.suspended=false;g.tick(.05);g.suspended=true;
       return {blocked,stayed:g.story.mapId===4&&!g.storyError,
-        functionalOnly:g.map.npcs.every(n=>n.proxy||String(n.id).startsWith('cut-')),
+        functionalOnly:g.map.npcs.every(n=>n.proxy||String(n.id).startsWith('cut-')||String(n.id).startsWith('field-item-')),
         nativeHidden:g.hiddenStoryNativeEvents().size>0};
     });
     assert.deepEqual(routeSafety,{blocked:true,stayed:true,functionalOnly:true,nativeHidden:true});
