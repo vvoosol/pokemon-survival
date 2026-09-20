@@ -41,10 +41,17 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     return true;
   }
   async init() {
-    this.storyData = await window.SurvivorRPG.loadStoryJSON('assets/story/battle-data.json');
+    const [storyData, pokemonNamesKo] = await Promise.all([
+      window.SurvivorRPG.loadStoryJSON('assets/story/battle-data.json'),
+      window.SurvivorRPG.loadStoryJSON('assets/story/pokemon-names-ko.json')
+    ]);
+    this.storyData = storyData;
+    const customKoreanNames = {royaleon: '로열리온', cefireon: '세파이어리온'};
     // Keep curated Korean names and expansion learnsets when the source overlaps.
-    for (const [id, data] of Object.entries(this.storyData.pokemon))
+    for (const [id, data] of Object.entries(this.storyData.pokemon)) {
+      data.name = pokemonNamesKo[String(data.dexNo)] || customKoreanNames[id] || data.name;
       if (!window.SurvivorRPG.PokemonData[id]) window.SurvivorRPG.PokemonData[id] = data;
+    }
     Object.assign(window.SurvivorRPG.MoveData, this.storyData.moves);
     await super.init();
     this.spawnSystem = new window.SurvivorRPG.StorySpawnSystem(this.map);

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Anil Story | 원본 맵 검증</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { display: flex; flex-direction: column; overflow: hidden; background: #000; color: #fff; }
+    header { width: 100%; min-height: 46px; padding: 6px 12px; display: flex; align-items: center; gap: 12px; background: #303b43; box-sizing: border-box; flex-wrap: wrap; }
+    header label { font-size: 18px; }
+    select, button { font: inherit; color: #fff; background: #303b43; border: 2px solid #eee; min-height: 32px; }
+    #viewport { width: 100%; flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; }
+    canvas { display: block; max-width: 100%; max-height: 100%; aspect-ratio: 16 / 9; touch-action: none; }
+    #sourceStatus { font-size: 16px; flex: 1; }
+    #dialogue { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: min(80%, 700px); box-sizing: border-box; padding: 18px; background: #303b43; border: 3px solid #eee; font-size: 20px; white-space: pre-line; }
+    #dialogue[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <header><label for="mapSelect">원본 맵 검증</label><select id="mapSelect" aria-label="맵"></select><button id="eventButton" type="button">원본 대사</button><span id="sourceStatus" role="status"></span></header>
+  <div id="viewport"><canvas id="storyCanvas" width="1280" height="720"></canvas></div>
+  <button id="dialogue" hidden></button>
+  <script src="js/story/storyState.js"></script>
+  <script src="js/story/eventInterpreter.js"></script>
+  <script src="js/story/mapRenderer.js"></script>
+  <script src="js/story/preview.js"></script>
+</body>
+</html>

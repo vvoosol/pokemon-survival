@@ -2,6 +2,8 @@ const fs = require('node:fs'), path = require('node:path'), vm = require('node:v
 const source = process.argv[2], root = path.resolve(__dirname, '..');
 if (!source) throw Error('Pass original Anil folder');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'assets/story/manifest.json')));
+const pokemonNamesKo = JSON.parse(fs.readFileSync(path.join(root, 'assets/story/pokemon-names-ko.json')));
+const customKoreanNames = {royaleon: '로열리온', cefireon: '세파이어리온'};
 function sections(name) {
   const result = {}; let current;
   for (const raw of fs.readFileSync(path.join(source, 'PBS', name + '.txt'), 'utf8').split(/\r?\n/)) {
@@ -87,10 +89,11 @@ for (const sourceId of needed) {
     fs.copyFileSync(from, path.join(root, dest)); paths[key] = dest;
   }
   const level = 5, stat = value => Math.floor(2 * value * level / 100) + 5;
+  const dexNo = Object.keys(species).indexOf(form ? form[1] : sourceId) + 1;
   const evos = (native.Evolutions || '').split(','), evolutions = [];
   for (let i = 0; i < evos.length; i += 3) if (needed.has(evos[i]) || R.PokemonData[evos[i]?.toLowerCase()])
     evolutions.push({target: evos[i].toLowerCase(), method: 'level', level: evos[i+1] === 'Level' ? Number(evos[i+2]) : 28, sourceMethod: evos[i+1], sourceParameter: evos[i+2]});
-  extraSpecies[id] = {id, speciesId: id, sourceId, name: native.Name, level, generation: Number(native.Generation), dexNo: Object.keys(species).indexOf(form ? form[1] : sourceId) + 1,
+  extraSpecies[id] = {id, speciesId: id, sourceId, name: pokemonNamesKo[String(dexNo)] || customKoreanNames[id] || native.Name, level, generation: Number(native.Generation), dexNo,
     types: native.Types.toLowerCase().split(','), baseStats: {hp, attack, defense, speed, specialAttack, specialDefense},
     growthRate: growth[native.GrowthRate], catchRate: Number(native.CatchRate), baseExp: Number(native.BaseExp),
     hp: Math.floor(2 * hp * level / 100) + level + 10, maxHp: Math.floor(2 * hp * level / 100) + level + 10,

@@ -20,6 +20,17 @@ test('story flags select the highest valid native event page', () => {
   assert.equal(R.StoryState.pageIndex(source, state, 57), 1);
 });
 
+test('original-engine switch 127 helper pages never replace real cave entrance pages', () => {
+  const state = fresh(), map = require('../assets/story/maps/107.json');
+  state.switches[127] = true;
+  for (const eventId of [3, 4]) {
+    const entrance = map.events[eventId];
+    assert.ok(entrance, `missing Route 3 cave entrance event ${eventId}`);
+    assert.equal(R.StoryState.pageIndex(entrance, state, 107), 0);
+    assert.ok(entrance.pages[0].list.some(c => c.code === 201 && Number(c.parameters?.[1]) === 11));
+  }
+});
+
 test('gym unlocks require original badge, keep order, and cannot duplicate rewards', () => {
   const state = fresh();
   assert.throws(() => R.StoryState.unlockGym(state, 1), /badge/);

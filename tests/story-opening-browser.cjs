@@ -74,7 +74,15 @@ async function opening(afterOpening) {
     await setupStoryDriver(page);
     assert.equal(await page.evaluate(() => currentSurvivorRPG.story.mapId), 2);
     assert.equal(await page.evaluate(() => currentSurvivorRPG.map.name), '태초마을');
-    assert.equal(await page.evaluate(() => currentSurvivorRPG.storyDialog.resolve), null);
+    const openingDialog = await page.evaluate(() => ({
+      active: !!currentSurvivorRPG.storyDialog.resolve,
+      text: currentSurvivorRPG.storyDialog.text.textContent
+    }));
+    if (openingDialog.active) {
+      assert.ok(openingDialog.text.includes('오박사에게 가 보자'));
+      await page.evaluate(() => currentSurvivorRPG.answerStory(0));
+    }
+    assert.equal(await page.evaluate(() => !!currentSurvivorRPG.storyDialog.resolve), false);
     await page.evaluate(() => settleStory());
     await page.evaluate(async () => {
       const g = currentSurvivorRPG;
@@ -100,7 +108,10 @@ async function opening(afterOpening) {
     await page.screenshot({path: path.join(__dirname, 'screenshots/story-starter.png')});
     const saved = await page.evaluate(() => currentSurvivorRPG.saveGame(true));
     assert.equal(saved, true);
-    await page.reload(); await page.waitForFunction(() => currentSurvivorRPG?.storyRenderer && !currentSurvivorRPG.storyBusy);
+    await page.reload();
+    await page.waitForSelector('#resumeLoadBtn');
+    await page.locator('#resumeLoadBtn').click();
+    await page.waitForFunction(() => window.currentSurvivorRPG?.storyRenderer && !window.currentSurvivorRPG.storyBusy);
     assert.equal(await page.evaluate(() => currentSurvivorRPG.partyPokemon[0]?.speciesId), 'bulbasaur');
     assert.deepEqual(errors, []);
     console.log('PASS: outdoor Pallet start, outdoor Oak starter, indoor entrances blocked and story reload');

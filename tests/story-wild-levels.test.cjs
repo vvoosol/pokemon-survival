@@ -84,10 +84,13 @@ test('story spawn tables use the progression band instead of native encounter le
   assert.ok(zones[0].spawnTable.every(p => p.minLevel >= 10 && p.maxLevel === 19));
 });
 
-test('story random encounters exclude species that still have English display names', () => {
+test('story random encounters include translated expansion species from every supported generation', () => {
   R.PokemonData = {
-    korean: {id: 'korean', sourceId: 'KOREAN', name: '구구', level: 3, generation: 2},
-    english: {id: 'english', sourceId: 'ENGLISH', name: 'Pidgey', level: 3, generation: 2}
+    mankey: {id: 'mankey', sourceId: 'MANKEY', name: '망키', level: 3, generation: 1},
+    ledyba: {id: 'ledyba', sourceId: 'LEDYBA', name: '레디바', level: 3, generation: 2},
+    rockruff: {id: 'rockruff', sourceId: 'ROCKRUFF', name: '암멍이', level: 3, generation: 7},
+    wooloo: {id: 'wooloo', sourceId: 'WOOLOO', name: '우르', level: 3, generation: 8},
+    smoliv: {id: 'smoliv', sourceId: 'SMOLIV', name: '미니브', level: 3, generation: 9}
   };
   const renderer = {
     map: {id: 5, width: 1, height: 1},
@@ -95,7 +98,7 @@ test('story random encounters exclude species that still have English display na
     tileAt: () => 1
   };
   const zones = R.StorySpawnSystem.zones(renderer, {Land: [{minLevel: 3, maxLevel: 6}]}, false, {min: 3, max: 6});
-  assert.deepEqual(zones[0].spawnTable.map(p => p.speciesId), ['korean']);
+  assert.deepEqual(zones[0].spawnTable.map(p => p.speciesId), ['mankey', 'ledyba', 'rockruff', 'wooloo', 'smoliv']);
 });
 
 test('large grass fields split into local zones and each zone can hold four wild Pokemon', () => {

@@ -96,7 +96,12 @@ window.SurvivorRPG.StoryState = {
   },
   pageIndex(event, state, mapId) {
     for (let i = event.pages.length - 1; i >= 0; i--) {
-      const c = event.pages[i].condition;
+      const page = event.pages[i];
+      const c = page.condition;
+      const originalEngineHelperPage = c.switch1_valid && c.switch1_id === 127 && page.list?.some(command =>
+        [355, 655].includes(command.code) && /(?:get_self\.onEvent\?|setTempSwitchOn)/.test(String(command.parameters?.[0] || ''))
+      );
+      if (originalEngineHelperPage) continue;
       if (c.switch1_valid && !state.switches[c.switch1_id]) continue;
       if (c.switch2_valid && !state.switches[c.switch2_id]) continue;
       if (c.variable_valid && !(Number(state.variables[c.variable_id] || 0) >= c.variable_value)) continue;

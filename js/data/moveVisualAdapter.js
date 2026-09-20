@@ -4,6 +4,7 @@ window.SurvivorRPG = window.SurvivorRPG || {};
   // Anil BattleAnimationPlayer.rb uses five 192px columns. Timelines are adapted for real time.
   // Keep small ranged effects readable without changing their combat hitboxes.
   const minimumRangedVisualSize = 44;
+  const adaptedRangedVisualSize = 64;
   const sheets = {
     impact: ['Tackle_B.png', [0], [0], '#fff2ae'],
     scratch: ['Scratch + Shadow Claw.png', [0], [0], '#fff2ae'],
@@ -93,8 +94,15 @@ window.SurvivorRPG = window.SurvivorRPG || {};
     getDrawSize(move, size, impact = false) {
       if (!Number.isFinite(size)) return size;
       if (impact) return Math.max(size, minimumRangedVisualSize);
-      if (['PROJECTILE', 'MULTI_PROJECTILE', 'AREA_TARGET', 'BEAM'].includes(move?.behavior))
-        return Math.max(size, minimumRangedVisualSize);
+      if (['PROJECTILE', 'MULTI_PROJECTILE', 'AREA_TARGET', 'BEAM'].includes(move?.behavior)) {
+        // Imported story moves use a compact 48px combat lane width. That value is a
+        // hitbox choice, not a visual scale, so do not let learning/importing one make
+        // the projectile art suddenly shrink for either battle team.
+        const visualFloor = Number.isFinite(move?.visualSize)
+          ? move.visualSize
+          : (move?.adaptation ? adaptedRangedVisualSize : minimumRangedVisualSize);
+        return Math.max(size, visualFloor);
+      }
       return size;
     },
     draw(ctx, assets, move, x, y, size, age, angle = 0, impact = false) {

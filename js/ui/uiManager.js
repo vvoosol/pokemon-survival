@@ -323,7 +323,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.menuOverlay.dataset.view = game.menuView;
     this.menuOverlay.dataset.summaryPage = this.summaryPage;
     this.menuWindow.className = "menu-window";
-    if (["main", "report", "settings", "areaSelect", "formation", "professor", "starterSelect", "starterConfirm", "resetConfirm"].includes(game.menuView)) this.menuWindow.classList.add("menu-window--compact");
+    if (["main", "report", "settings", "worldMap", "areaSelect", "formation", "professor", "starterSelect", "starterConfirm", "resetConfirm"].includes(game.menuView)) this.menuWindow.classList.add("menu-window--compact");
 
     if (game.menuView === "pokemon") this.renderPokemonMenu(game);
     else if (game.menuView === "summary") this.renderSummaryMenu(game, game.menuSelectedPokemonIndex);
@@ -334,6 +334,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     else if (game.menuView === "mart") this.renderMartMenu(game);
     else if (game.menuView === "report") this.renderReportMenu(game);
     else if (game.menuView === "settings") this.renderSettingsMenu(game);
+    else if (game.menuView === "worldMap") this.renderWorldMap(game);
     else if (game.menuView === "formation") this.renderFormationMenu(game);
     else if (["professor", "starterSelect", "starterConfirm", "resetConfirm"].includes(game.menuView)) this.renderProfessorMenu(game);
     else this.renderMainMenu(game);
@@ -732,6 +733,7 @@ window.SurvivorRPG.UIManager = class UIManager {
         <label class="menu-option">효과음 <input aria-label="효과음" data-setting="effects" data-selectable type="range" min="0" max="100" step="5" value="${Math.round(s.effects*100)}"></label>
         <label class="menu-option"><input data-setting="mute" data-selectable type="checkbox" ${s.mute?'checked':''}> 전체 음소거</label>
         <label class="menu-option"><input data-setting="reducedEffects" data-selectable type="checkbox" ${s.reducedEffects?'checked':''}> 전투 이펙트 LOW</label>
+        ${game.story ? '<button class="menu-action" data-action="worldMap" data-selectable>지역 지도 · 현재 위치</button>' : ''}
         ${game.story ? '<button class="menu-action" data-action="newStory" data-selectable>스토리 새로 시작</button>' : ''}
         <button class="menu-action" data-action="opening" data-selectable>처음 오프닝으로 돌아가기</button>
         <small>진행 상황을 저장하고 모드 선택 화면으로 돌아갑니다.</small>
@@ -740,8 +742,44 @@ window.SurvivorRPG.UIManager = class UIManager {
       </div></section>`;
     this.menuRoot.dataset.columns='1';
     this.menuRoot.querySelectorAll('[data-setting]').forEach(input=>input.addEventListener('input',()=>game.assets.configure(input.dataset.setting,input.type==='checkbox'?input.checked:input.value/100)));
+    this.bindMenuButton('[data-action="worldMap"]',()=>game.openMenuView('worldMap'));
     this.bindMenuButton('[data-action="newStory"]',()=>game.openMenuView('resetConfirm'));
     this.bindMenuButton('[data-action="opening"]',()=>game.returnToOpening());
+    this.bindMenuButton('[data-action="back"]',()=>game.backMenu(),'cancel');
+  }
+
+  renderWorldMap(game) {
+    const route = [
+      {name:'태초마을', maps:[2]},
+      {name:'1번도로', maps:[3,158]},
+      {name:'상록시티', maps:[4]},
+      {name:'2번도로', maps:[5,6,33,55,66]},
+      {name:'상록숲', maps:[7,8]},
+      {name:'회색시티', maps:[9]},
+      {name:'3번도로', maps:[10,107]},
+      {name:'달맞이산', maps:[11,12,13]},
+      {name:'4번도로', maps:[14]},
+      {name:'블루시티', maps:[15]},
+      {name:'5번도로', maps:[17]},
+      {name:'6번도로', maps:[18]},
+      {name:'갈색시티', maps:[19]}
+    ];
+    const currentMapId = Number(game.story?.mapId || 0);
+    const currentIndex = route.findIndex(stop => stop.maps.includes(currentMapId));
+    const exactName = game.map?.name || game.storyRenderer?.map?.name || `맵 ${currentMapId}`;
+    const objective = typeof game.storyObjective === 'function' ? game.storyObjective() : '';
+    this.menuRoot.innerHTML = `<section class="compact-screen story-world-map">
+      <div class="menu-title">지역 지도</div>
+      <div class="story-map-status"><span>현재 위치</span><strong>${exactName}</strong></div>
+      <div class="story-map-route" aria-label="스토리 진행 지도">
+        ${route.map((stop, index) => `<div class="story-map-stop ${index < currentIndex ? 'visited' : ''} ${index === currentIndex ? 'current' : ''}">
+          <span class="story-map-dot" aria-hidden="true"></span><span>${stop.name}</span>
+        </div>`).join('')}
+      </div>
+      ${objective ? `<div class="story-map-objective">${objective}</div>` : ''}
+      <button class="menu-action" data-action="back" data-selectable>설정으로 돌아가기</button>
+    </section>`;
+    this.menuRoot.dataset.columns='1';
     this.bindMenuButton('[data-action="back"]',()=>game.backMenu(),'cancel');
   }
 

@@ -28,3 +28,17 @@ test('small area-flight and impact animation frames also remain readable', () =>
   assert.equal(MoveVisualAdapter.getDrawSize(MoveData.seedBomb, 36, true), 44);
   assert.equal(MoveVisualAdapter.getDrawSize(MoveData.seedBomb, 72, true), 72);
 });
+
+test('imported story projectile visuals do not inherit their compact combat hitbox width', () => {
+  const imported = {
+    ...MoveData.waterPulse,
+    id: 'story_test_projectile',
+    width: 48,
+    adaptation: 'Imported story move'
+  };
+  assert.equal(MoveVisualAdapter.getDrawSize(imported, imported.width), 64);
+  assert.equal(imported.width, 48);
+
+  const explicit = {...imported, visualSize: 72};
+  assert.equal(MoveVisualAdapter.getDrawSize(explicit, explicit.width), 72);
+});

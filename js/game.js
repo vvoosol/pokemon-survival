@@ -1088,7 +1088,8 @@ window.SurvivorRPG.Game = class Game {
       starterConfirm: "starterSelect",
       resetConfirm: "professor",
       summary: "pokemon",
-      bagTarget: "bag"
+      bagTarget: "bag",
+      worldMap: "settings"
     }[this.menuView] || "main";
     this.openMenuView(previous);
   }
