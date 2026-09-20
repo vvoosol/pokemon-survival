@@ -1,41 +1,19 @@
 window.SurvivorRPG.StorySpawnSystem = class StorySpawnSystem extends window.SurvivorRPG.SpawnSystem {
-  constructor(mapData) {
-    super(mapData);
-    this.maxTotalEnemies = 4;
-  }
-
   update(dt, enemies) {
     if (!this.zones.length) return;
     const alive = enemies.filter(enemy => !enemy.dead);
-    const aliveTotal = alive.length;
-    if (aliveTotal >= this.maxTotalEnemies) return;
-
-    // Keep the first two encounters responsive, then open the third/fourth slots
-    // more gradually so a new area does not flood the player at once.
-    const pace = aliveTotal < 2 ? 1 : aliveTotal === 2 ? 0.38 : 0.22;
-    const ready = [];
     for (const zone of this.zones) {
+      const aliveInZone = alive.filter(enemy => enemy.spawnZoneId === zone.id).length;
+      // Each grass zone fills quickly to two encounters, then slows down for the
+      // third/fourth so adjacent zones can operate independently without flooding.
+      const pace = aliveInZone < 2 ? 1 : aliveInZone === 2 ? 0.38 : 0.22;
       zone.timer -= dt * pace;
       if (zone.timer > 0) continue;
-      const aliveInZone = alive.filter(enemy => enemy.spawnZoneId === zone.id).length;
-      if (aliveInZone < Math.min(4, zone.maxAlive)) ready.push(zone);
-      else zone.timer = this.randomRange(zone.respawnMin, zone.respawnMax);
-    }
-    if (!ready.length) return;
-
-    const zone = ready[Math.floor(Math.random() * ready.length)];
-    const enemy = this.spawnOne(zone);
-    zone.timer = this.randomRange(zone.respawnMin, zone.respawnMax);
-    if (!enemy) return;
-    enemies.push(enemy);
-
-    const nextTotal = aliveTotal + 1;
-    if (nextTotal >= 2) {
-      const delayScale = nextTotal === 2 ? 1.2 : nextTotal === 3 ? 1.8 : 2.4;
-      for (const other of this.zones) {
-        if (other === zone) continue;
-        other.timer = Math.max(other.timer, this.randomRange(other.respawnMin, other.respawnMax) * delayScale);
+      if (aliveInZone < Math.min(4, zone.maxAlive)) {
+        const enemy = this.spawnOne(zone);
+        if (enemy) enemies.push(enemy);
       }
+      zone.timer = this.randomRange(zone.respawnMin, zone.respawnMax);
     }
   }
 
@@ -82,14 +60,27 @@ window.SurvivorRPG.StorySpawnSystem = class StorySpawnSystem extends window.Surv
       }
     }
     const zones = [];
+    const addZone = tiles => zones.push({id: `story_${map.id}_${zones.length}`, tiles, maxAlive: 4,
+      respawnMin: 10, respawnMax: 16, spawnStyle: 'NORMAL', spawnTable: randomizedTable});
     while (cells.size) {
-      const start = cells.values().next().value, tiles = [start.split(',').map(Number)]; cells.delete(start);
-      for (let i = 0; i < tiles.length; i++) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const x = tiles[i][0] + dx, y = tiles[i][1] + dy, key = `${x},${y}`;
-        if (cells.delete(key)) tiles.push([x, y]);
+      const start = cells.values().next().value, component = [start.split(',').map(Number)]; cells.delete(start);
+      for (let i = 0; i < component.length; i++) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x = component[i][0] + dx, y = component[i][1] + dy, key = `${x},${y}`;
+        if (cells.delete(key)) component.push([x, y]);
       }
-      zones.push({id: `story_${map.id}_${zones.length}`, tiles, maxAlive: 4, respawnMin: 10, respawnMax: 16,
-        spawnStyle: 'NORMAL', spawnTable: randomizedTable});
+      if (component.length <= 64) { addZone(component); continue; }
+
+      // A very large connected grass field is divided into local 8x8 tile sectors.
+      // This keeps each sector's four-Pokemon population independent and spatially local.
+      const minX = Math.min(...component.map(tile => tile[0]));
+      const minY = Math.min(...component.map(tile => tile[1]));
+      const sectors = new Map();
+      for (const tile of component) {
+        const key = `${Math.floor((tile[0] - minX) / 8)},${Math.floor((tile[1] - minY) / 8)}`;
+        if (!sectors.has(key)) sectors.set(key, []);
+        sectors.get(key).push(tile);
+      }
+      for (const tiles of sectors.values()) addZone(tiles);
     }
     return zones;
   }

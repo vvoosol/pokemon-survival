@@ -105,10 +105,16 @@ const fs = require('node:fs');
       g.trainer.x=(47+.5)*32;g.trainer.y=(17+.5)*32;
       g.suspended=false;g.tick(.05);g.suspended=true;
       await new Promise(r=>setTimeout(r,0));
+      const westEdge=g.storyRenderer.activeEvents(g.story).find(({event,pageIndex})=>
+        g.unsupportedStoryTransfer(event,pageIndex)?.parameters?.[1]===35);
+      if(!westEdge)throw Error('Route 22 unsafe west transition missing');
+      const westPos=g.storyPositions[westEdge.event.id]||westEdge.event;
+      const westEdgeBlocked=!SurvivorRPG.MovementSystem.canStand(g.map,(westPos.x+.5)*32,(westPos.y+.5)*32,10);
+      await g.runStoryEvent(westEdge.event,westEdge.pageIndex);
       return {map:g.story.mapId,name:g.map.name,busy:g.storyBusy,error:g.storyError?.message,
-        rivalBlocked:g.storyOutdoorPlan().blocked.includes(11)};
+        rivalBlocked:g.storyOutdoorPlan().blocked.includes(11),westEdgeBlocked};
     });
-    assert.deepEqual(viridianWest,{map:5,name:'22번도로',busy:false,error:undefined,rivalBlocked:true});
+    assert.deepEqual(viridianWest,{map:5,name:'22번도로',busy:false,error:undefined,rivalBlocked:true,westEdgeBlocked:true});
     console.log('PASS Viridian west exit stays responsive',viridianWest);
     await page.screenshot({path:path.join(screenshots,'outdoor-doors.png')});
     const speed = await page.evaluate(() => {

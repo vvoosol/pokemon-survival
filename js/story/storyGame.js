@@ -681,10 +681,18 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     return x >= pos.x && x < pos.x + Number(size?.[1] || 1) &&
       y <= pos.y && y > pos.y - Number(size?.[2] || 1);
   }
+  storyPlayableMapIds() {
+    // Story mode currently supports the outdoor/cave route through the third gym,
+    // plus the transition maps that are required to keep that route continuous.
+    return new Set([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 33, 55, 66, 107, 158]);
+  }
+  isStoryTransferTargetAllowed(mapId) {
+    return this.storyPlayableMapIds().has(Number(mapId)) && !!this.storyRenderer.manifest.maps[mapId];
+  }
   unsupportedStoryTransfer(event, pageIndex) {
     const page = event?.pages?.[pageIndex];
     return page?.list?.find(command => command.code === 201 && command.parameters?.[0] === 0 &&
-      !this.storyRenderer.manifest.maps[command.parameters[1]]) || null;
+      !this.isStoryTransferTargetAllowed(command.parameters[1])) || null;
   }
   isCutTreeEvent(event, page) {
     const activePage = typeof page === 'number' ? event?.pages?.[page] : page;

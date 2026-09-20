@@ -97,3 +97,30 @@ test('story random encounters exclude species that still have English display na
   const zones = R.StorySpawnSystem.zones(renderer, {Land: [{minLevel: 3, maxLevel: 6}]}, false, {min: 3, max: 6});
   assert.deepEqual(zones[0].spawnTable.map(p => p.speciesId), ['korean']);
 });
+
+test('large grass fields split into local zones and each zone can hold four wild Pokemon', () => {
+  R.PokemonData = {
+    pidgey: {id: 'pidgey', sourceId: 'PIDGEY', name: '구구', level: 2, generation: 2}
+  };
+  const renderer = {
+    map: {id: 5, width: 20, height: 8},
+    tileset: {terrain_tags: {values: {1: 2}}, passages: {values: {1: 0}}, priorities: {values: {1: 0}}},
+    tileAt: () => 1
+  };
+  const zones = R.StorySpawnSystem.zones(renderer, {Land: [{minLevel: 2, maxLevel: 4}]}, false, {min: 2, max: 4});
+  assert.equal(zones.length, 3);
+  assert.ok(zones.every(zone => zone.tiles.length <= 64 && zone.maxAlive === 4));
+
+  const spawn = Object.create(R.StorySpawnSystem.prototype);
+  spawn.zones = zones.map(zone => ({...zone, timer: 0}));
+  spawn.randomRange = () => 10;
+  spawn.spawnOne = zone => ({dead: false, spawnZoneId: zone.id});
+  const enemies = [];
+  for (let round = 0; round < 6; round++) {
+    for (const zone of spawn.zones) zone.timer = 0;
+    spawn.update(1, enemies);
+  }
+  assert.equal(enemies.length, 12);
+  for (const zone of spawn.zones)
+    assert.equal(enemies.filter(enemy => enemy.spawnZoneId === zone.id).length, 4);
+});
