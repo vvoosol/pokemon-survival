@@ -19,7 +19,9 @@ window.SurvivorRPG.Camera = class Camera {
   }
 
   clamp() {
-    this.x = Math.max(0, Math.min(this.world.width - this.width, this.x));
+    this.x = this.world.width <= this.width
+      ? (this.world.width - this.width) / 2
+      : Math.max(0, Math.min(this.world.width - this.width, this.x));
     this.y = Math.max(0, Math.min(this.world.height - this.height, this.y));
   }
 };
