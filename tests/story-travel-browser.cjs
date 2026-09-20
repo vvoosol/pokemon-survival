@@ -63,6 +63,26 @@ const fs = require('node:fs');
       return result;
     });
     console.log('PASS NPC doors',JSON.stringify(placement));
+    const palletSafety = await page.evaluate(async () => {
+      const g=currentSurvivorRPG;
+      await g.transferStory(2,13,15);g.storyBusy=false;g.storyError=null;g.mode='trainer';
+      const doors=[5,6,7,8].map(id=>({event:g.storyRenderer.map.events[id],pageIndex:0}));
+      const doorStates=doors.map(({event,pageIndex})=>{
+        const pos=g.storyPositions[event.id]||event;
+        return g.isStoryInteriorDoorEvent(event,pageIndex)&&
+          !SurvivorRPG.MovementSystem.canStand(g.map,(pos.x+.5)*32,(pos.y+.5)*32,10);
+      });
+      const before=g.story.mapId;await g.runStoryEvent(doors[0].event,doors[0].pageIndex);
+      g.story.switches[132]=true;
+      const active=g.storyRenderer.activeEvents(g.story);
+      const water={event:g.storyRenderer.map.events[50],pageIndex:0};
+      for(const {event,pageIndex,page} of active) if(page.trigger===3)g.autoruns.add(`${event.id}:${pageIndex}`);
+      g.trainer.x=11.5*32;g.trainer.y=42.5*32;g.suspended=false;g.tick(.05);g.suspended=true;
+      return {doorStates,doorSilent:g.story.mapId===before&&!g.storyBusy&&!g.storyError,
+        waterLegacy:g.isLegacyStoryEncounterEvent(water.event,water.pageIndex),waterResponsive:!g.storyBusy&&!g.storyError};
+    });
+    assert.deepEqual(palletSafety,{doorStates:[true,true,true,true],doorSilent:true,waterLegacy:true,waterResponsive:true});
+    console.log('PASS Pallet house doors and southwest encounter safety',palletSafety);
     const storyFixes = await page.evaluate(async () => {
       const g=currentSurvivorRPG;
       await g.transferStory(4,52,38);g.storyBusy=false;
@@ -109,23 +129,24 @@ const fs = require('node:fs');
     assert.equal(captureRender,1);
     console.log('PASS story mode renders capture throw transition');
     const routeSafety = await page.evaluate(async () => {
-      const g=currentSurvivorRPG;await g.transferStory(4,52,38);g.storyBusy=false;
+      const g=currentSurvivorRPG;await g.transferStory(2,20,40);g.storyBusy=false;
       const active=g.storyRenderer.activeEvents(g.story);
-      const missing=active.find(({event,pageIndex})=>g.unsupportedStoryTransfer(event,pageIndex));
+      const missing=active.find(({event,pageIndex})=>g.unsupportedStoryTransfer(event,pageIndex)&&
+        !g.isStoryInteriorDoorEvent(event,pageIndex));
       if(!missing)throw Error('Unsupported transfer fixture missing');
       const pos=g.storyPositions[missing.event.id]||missing.event;
       const blocked=!SurvivorRPG.MovementSystem.canStand(g.map,(pos.x+.5)*32,(pos.y+.5)*32,10);
-      g.trainer.x=(52+.5)*32;g.trainer.y=(38+.5)*32;g.storyLastSafePosition={mapId:4,x:52,y:38,direction:2};
+      g.trainer.x=(20+.5)*32;g.trainer.y=(40+.5)*32;g.storyLastSafePosition={mapId:2,x:20,y:40,direction:2};
       const ask=g.askStory,notices=[];g.askStory=async text=>{notices.push(text);return 0;};
       await g.runStoryEvent(missing.event,missing.pageIndex);g.askStory=ask;
       g.suspended=false;g.tick(.05);g.suspended=true;
-      return {blocked,stayed:g.story.mapId===4&&!g.storyError,
+      return {blocked,stayed:g.story.mapId===2&&!g.storyError,
         notice:notices[0],safeX:Math.floor(g.trainer.x/32),safeY:Math.floor(g.trainer.y/32),
         functionalOnly:g.map.npcs.every(n=>n.proxy||String(n.id).startsWith('cut-')||String(n.id).startsWith('field-item-')),
         nativeHidden:g.hiddenStoryNativeEvents().size>0};
     });
-    assert.deepEqual(routeSafety,{blocked:true,stayed:true,notice:'아직 구현되지 않은 지역입니다.\n직전 위치로 돌아왔습니다.',
-      safeX:52,safeY:38,functionalOnly:true,nativeHidden:true});
+    assert.deepEqual(routeSafety,{blocked:false,stayed:true,notice:'아직 구현되지 않은 지역입니다.\n직전 위치로 돌아왔습니다.',
+      safeX:20,safeY:40,functionalOnly:true,nativeHidden:true});
     console.log('PASS blocked routes and filtered NPCs',routeSafety);
     const viridianWest = await page.evaluate(async () => {
       const g=currentSurvivorRPG;

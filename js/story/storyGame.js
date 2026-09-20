@@ -728,6 +728,21 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     return page?.list?.find(command => command.code === 201 && command.parameters?.[0] === 0 &&
       !this.isStoryTransferTargetAllowed(command.parameters[1])) || null;
   }
+  isStoryInteriorDoorEvent(event, pageIndex) {
+    const map = this.storyRenderer?.map, page = event?.pages?.[pageIndex];
+    if (!map || !page) return false;
+    const transfer = page.list?.find(command => command.code === 201 && command.parameters?.[0] === 0 &&
+      Number(command.parameters[1]) !== Number(map.id) && !this.isStoryTransferTargetAllowed(command.parameters[1]));
+    if (!transfer) return false;
+    const pos = this.storyPositions[event.id] || event;
+    const awayFromEdge = pos.x > 1 && pos.y > 1 && pos.x < map.width - 2 && pos.y < map.height - 2;
+    return awayFromEdge && (transfer.parameters?.[4] === 8 || /door|puerta|condo/i.test(String(event?.name || '')));
+  }
+  isLegacyStoryEncounterEvent(event, pageIndex) {
+    const page = event?.pages?.[pageIndex];
+    return !!page?.list?.some(command => [355, 655].includes(command.code) &&
+      /\bpbEncounter\s*\(/.test(String(command.parameters?.[0] || '')));
+  }
   isCutTreeEvent(event, page) {
     const activePage = typeof page === 'number' ? event?.pages?.[page] : page;
     return !!activePage && activePage.through === false &&
@@ -751,8 +766,10 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (!this.map || !this.storyRenderer?.map) return;
     const dynamic = [], blocked = new Set(this.storyOutdoorPlan().blocked);
     for (const {event, pageIndex, page} of this.storyRenderer.activeEvents(this.story)) {
-      if (this.erasedStoryEvents.has(event.id) || blocked.has(event.id)) continue;
-      if (!this.isCutTreeEvent(event, page) && !this.unsupportedStoryTransfer(event, pageIndex)) continue;
+      const interiorDoor = this.isStoryInteriorDoorEvent(event, pageIndex);
+      if (this.erasedStoryEvents.has(event.id) || (blocked.has(event.id) && !interiorDoor)) continue;
+      if (!this.isCutTreeEvent(event, page) && !this.unsupportedStoryTransfer(event, pageIndex) &&
+        !interiorDoor) continue;
       const pos = this.storyPositions[event.id] || event;
       const size = String(event.name || '').match(/size\((\d+),\s*(\d+)\)/i);
       const width = Number(size?.[1] || 1), height = Number(size?.[2] || 1);
@@ -914,6 +931,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
   }
   async runStoryEvent(event, pageIndex) {
     if (this.storyBusy || this.storyError || this.storyBattle || !['trainer', 'pokemon'].includes(this.mode)) return;
+    if (this.isStoryInteriorDoorEvent(event, pageIndex) || this.isLegacyStoryEncounterEvent(event, pageIndex)) return;
     if (this.collectPokeballFieldEvent(event, pageIndex)) return;
     const blockedTransfer = this.unsupportedStoryTransfer(event, pageIndex);
     if (blockedTransfer) { await this.handleUnsupportedStoryTransfer(event, pageIndex, blockedTransfer); return; }
@@ -1023,7 +1041,8 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (this.storyFailedEvent && (this.storyFailedEvent.mapId !== this.story.mapId || tx !== this.storyFailedEvent.x || ty !== this.storyFailedEvent.y))
       this.storyFailedEvent = null;
     const blocked = new Set(this.storyOutdoorPlan().blocked);
-    const active = this.storyRenderer.activeEvents(this.story).filter(({event}) => !this.erasedStoryEvents.has(event.id) && !blocked.has(event.id) &&
+    const active = this.storyRenderer.activeEvents(this.story).filter(({event, pageIndex}) => !this.erasedStoryEvents.has(event.id) &&
+      !blocked.has(event.id) && !this.isStoryInteriorDoorEvent(event, pageIndex) && !this.isLegacyStoryEncounterEvent(event, pageIndex) &&
       !(this.storyFailedEvent?.mapId === this.story.mapId && this.storyFailedEvent.eventId === event.id));
     const onUnsupportedTransfer = active.some(({event, pageIndex}) =>
       !!this.unsupportedStoryTransfer(event, pageIndex) && this.storyEventContains(event, tx, ty));
