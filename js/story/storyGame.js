@@ -594,6 +594,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
         {id: 'viridian-ball-seller', label: '몬스터볼 상인', x: 48, y: 37, sourceMapId: 31, eventId: 8, action: 'ball-shop'}
       ]},
       5: {blocked: [11], proxies: []},
+      6: {blocked: [3], proxies: []},
       9: {blocked: [35, 36, 37], proxies: [
         {id: 'pewter-joy', label: '간호순', x: 24, y: 46, sourceMapId: 36, eventId: 7, choicePrompt: '포켓몬을 치료할까요?'},
         {id: 'brock', label: '브록', x: 23, y: 27, sourceMapId: 42, eventId: 16, intro: '브록: 회색시티 체육관 승부를 시작하자!'}

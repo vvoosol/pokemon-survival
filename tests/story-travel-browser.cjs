@@ -98,6 +98,18 @@ const fs = require('node:fs');
     });
     assert.deepEqual(storyFixes,{sellerWorks:true,treeBlocked:true,treeOpened:true});
     console.log('PASS Viridian seller and Cut tree collision',storyFixes);
+    const route2LegacyStory = await page.evaluate(async () => {
+      const g=currentSurvivorRPG;
+      await g.transferStory(6,20,13);g.storyBusy=false;g.storyError=null;g.mode='trainer';
+      const event=g.storyRenderer.map.events[3], pos=g.storyPositions[event.id]||event;
+      const plan=g.storyOutdoorPlan();
+      const passable=SurvivorRPG.MovementSystem.canStand(g.map,(pos.x+.5)*32,(pos.y+.5)*32,10);
+      g.trainer.x=(pos.x+.5)*32;g.trainer.y=(pos.y+.5)*32;
+      g.suspended=false;g.tick(.05);g.suspended=true;
+      return {ignored:plan.blocked.includes(3),passable,busy:g.storyBusy,error:g.storyError?.message};
+    });
+    assert.deepEqual(route2LegacyStory,{ignored:true,passable:true,busy:false,error:undefined});
+    console.log('PASS Route 2 legacy rival story is removed and path stays passable',route2LegacyStory);
     const fieldItem = await page.evaluate(async () => {
       const g=currentSurvivorRPG;
       await g.transferStory(10,11,36);g.storyBusy=false;g.mode='trainer';
