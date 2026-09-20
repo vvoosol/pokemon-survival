@@ -16,7 +16,7 @@ const fs = require('node:fs');
     await page.evaluate(() => { const g = currentSurvivorRPG; g.testTick(0.016); g.draw(); g.ui.update(g); });
   };
   try {
-    await page.goto('http://127.0.0.1:8787/');
+    await page.goto(process.env.GAME_URL || 'http://127.0.0.1:8787/?mode=battle');
     await page.waitForFunction(() => currentSurvivorRPG?.trainer || window.__bootError);
     assert.equal(await page.evaluate(() => window.__bootError), undefined);
     await page.evaluate(() => {

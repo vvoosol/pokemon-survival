@@ -35,6 +35,7 @@ window.SurvivorRPG.Game = class Game {
     this.journal=this.store.readJournal();
     this.runStats={defeats:0,earned:0,caught:[],damage:{},rewards:[]};
     this.autosaveTimer=0;
+    this.playTime=0;
     this.suspended=false;
     this.items = { potion: 0, expShare: false, expShareEnabled: false };
     this.currentMapId = "hub";
@@ -47,7 +48,7 @@ window.SurvivorRPG.Game = class Game {
     this.menuSelectedPokemonIndex = 0;
     this.partySwapIndex = null;
     this.pokedex = {};
-    this.saveVersion = 4;
+    this.saveVersion = window.SurvivorRPG.BuildConfig?.SAVE_VERSION || 5;
     this.modeBeforeLevelUp = "pokemon";
     this.transition = null;
     this.captureTarget = null;
@@ -58,7 +59,7 @@ window.SurvivorRPG.Game = class Game {
     this.choiceLocked = false;
     this.trainerBattle = null;
     this.trainerBattleArena = null;
-    this.debug = false;
+    this.debug = !!window.SurvivorRPG.BuildConfig?.DEBUG;
     this.messageText = "";
     this.messageTimer = 0;
     this.progressNotices = [];
@@ -244,6 +245,7 @@ window.SurvivorRPG.Game = class Game {
 
   update(dt) {
     if(this.suspended)return;
+    this.playTime+=dt;
     this.updateProgressNotices(dt);
     const crisis=this.mode==='pokemon' && (this.player.hp/this.player.maxHp<(this.musicCrisis ? 0.4 : 0.2));
     this.musicCrisis=crisis;
@@ -257,7 +259,7 @@ window.SurvivorRPG.Game = class Game {
       if (this.input.consumeSwitch() || this.input.consumeBall()) this.travelToHub();
       return;
     }
-    if (this.input.consumeDebugToggle()) this.debug = !this.debug;
+    if (window.SurvivorRPG.BuildConfig?.DEBUG && this.input.consumeDebugToggle()) this.debug = !this.debug;
     this.messageTimer = Math.max(0, this.messageTimer - dt);
     if (this.evolutionFlash) {
       this.evolutionFlash.timer -= dt;
@@ -1316,7 +1318,11 @@ window.SurvivorRPG.Game = class Game {
     const actor=this.activePokemon || this.trainer;
     const data = {
       version: this.saveVersion,
+      gameVersion: window.SurvivorRPG.BuildConfig?.VERSION || 'dev',
+      gameMode: this.story ? 'story' : 'battle',
       savedAt: Date.now(),
+      playTime: this.story?.playTime ?? this.playTime,
+      settings: window.SurvivorRPG.normalizeSettings?.(this.assets.settings) || this.assets.settings,
       trainer: { x: actor.x, y: actor.y, direction: actor.direction },
       currentMapId: this.currentMapId,
       currentHuntingArea: this.currentHuntingArea,
@@ -1357,6 +1363,8 @@ window.SurvivorRPG.Game = class Game {
       return false;
     }
     const data = report.data;
+    this.playTime=Number(data.playTime)||0;
+    if(data.settings)this.assets.applySettings?.(data.settings);
     const restored = data.ownedPokemon.map((saved) => this.deserializePokemon(saved));
     const byId = new Map(restored.map((pokemon) => [pokemon.uniqueId, pokemon]));
     this.ownedPokemon = restored;
@@ -1524,7 +1532,7 @@ window.SurvivorRPG.Game = class Game {
   }
 
   startTrainerBattleDebug(count = 6, profile = 'normal') {
-    if (!this.debug || this.story || this.trainerBattle || !window.SurvivorRPG.TrainerBattleEngine) return false;
+    if (!window.SurvivorRPG.BuildConfig?.DEBUG || !this.debug || this.story || this.trainerBattle || !window.SurvivorRPG.TrainerBattleEngine) return false;
     const activeCount = Math.max(1, Math.min(6, Number(count) || 6));
     const ids = ['bulbasaur', 'charmander', 'squirtle', 'pikachu', 'pidgey', 'rattata']
       .filter(id => window.SurvivorRPG.PokemonData[id]);

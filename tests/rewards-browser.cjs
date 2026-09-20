@@ -8,7 +8,7 @@ const path=require('node:path');
   page.on('response',r=>{if(r.status()>=400)errors.push(r.url());});
   const shot=name=>page.screenshot({path:path.join(__dirname,'screenshots',name+'.png')});
   try {
-    await page.goto('http://127.0.0.1:8787/');
+    await page.goto(process.env.GAME_URL || 'http://127.0.0.1:8787/?mode=battle');
     await page.waitForFunction(()=>window.currentSurvivorRPG?.trainer || window.__bootError);
     assert.equal(await page.evaluate(()=>window.__bootError),undefined);
     await page.evaluate(()=>{currentSurvivorRPG.update=()=>{};});

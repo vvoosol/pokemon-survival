@@ -13,7 +13,7 @@ const path = require('node:path');
     await page.waitForFunction(() => window.currentSurvivorRPG?.storyRenderer && !window.currentSurvivorRPG.storyBusy);
   };
   try {
-    await page.goto(process.env.GAME_URL || 'http://127.0.0.1:8787/?mode=story');
+    await page.goto(process.env.GAME_URL || 'http://127.0.0.1:8787/?mode=story&debug=1');
     await finishStoryBoot();
     // Isolated gym scenario. Overlevelled party shortens battles, but damage, AI,
     // participants, trainer roster, source events and rewards use production code.

@@ -20,7 +20,7 @@ const fs = require('node:fs');
   }, seconds);
   const press = async (key) => { await page.keyboard.press(key); await tick(0.01); };
   try {
-    await page.goto(process.env.GAME_URL || 'http://127.0.0.1:8787/');
+    await page.goto(process.env.GAME_URL || 'http://127.0.0.1:8787/?mode=battle');
     await page.waitForFunction(() => window.currentSurvivorRPG?.trainer || window.__bootError);
     assert.equal(await page.evaluate(() => window.__bootError), undefined);
     await page.evaluate(() => {

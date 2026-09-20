@@ -63,6 +63,7 @@
       <div id="modeSelectOverlay" class="mode-select-overlay" hidden>
         <section class="mode-select-window" aria-label="게임 모드 선택">
           <h1>게임 모드 선택</h1>
+          <p id="titleVersion" class="mode-select-message">v1.0.0-rc1</p>
           <button id="storyModeBtn" class="mode-select-button" type="button">
             <strong>스토리 모드</strong>
             <span>Pokémon Anil 스토리를 따라 모험을 시작합니다.</span>
@@ -78,6 +79,7 @@
         <section class="mode-select-window" aria-label="저장 기록 선택">
           <h1 id="resumeSelectTitle">이전 저장 기록이 있습니다</h1>
           <p id="resumeSelectMessage" class="mode-select-message">이어서 플레이하거나 처음부터 다시 시작할 수 있습니다.</p>
+          <p id="resumeSelectMeta" class="mode-select-message"></p>
           <button id="resumeLoadBtn" class="mode-select-button" type="button">
             <strong>불러오기</strong>
             <span>이전 진행 상황에서 계속합니다. · Z</span>
@@ -85,6 +87,21 @@
           <button id="resumeRestartBtn" class="mode-select-button" type="button">
             <strong>다시 시작</strong>
             <span>현재 진행 저장본을 지우고 처음부터 시작합니다. · X</span>
+          </button>
+        </section>
+      </div>
+
+      <div id="newGameConfirmOverlay" class="mode-select-overlay" hidden>
+        <section class="mode-select-window" aria-label="새 게임 확인">
+          <h1>저장 기록을 삭제할까요?</h1>
+          <p id="newGameConfirmMessage" class="mode-select-message">현재 진행을 삭제하고 새 게임을 시작합니다.</p>
+          <button id="newGameCancelBtn" class="mode-select-button" type="button">
+            <strong>취소</strong>
+            <span>기존 저장 기록을 유지합니다. · X</span>
+          </button>
+          <button id="newGameConfirmBtn" class="mode-select-button" type="button">
+            <strong>삭제하고 새 게임</strong>
+            <span>현재 모드의 진행 저장본을 삭제합니다. · Z</span>
           </button>
         </section>
       </div>
@@ -142,6 +159,7 @@
       setBootStatus(`부팅 오류: ${window.__bootError}`);
     });
   </script>
+  <script src="js/config.js"></script>
   <script src="js/data/moveData.js"></script>
   <script src="js/data/pokemonData.js"></script>
   <script src="js/data/battleRewardData.js"></script>

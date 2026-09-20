@@ -13,7 +13,7 @@ const path=require('node:path');
     await page.evaluate(()=>{const g=currentSurvivorRPG;g.tick=g.update.bind(g);g.update=()=>{};g.messageTimer=0;g.draw();g.ui.update(g);});
   };
   try {
-    await page.goto('http://127.0.0.1:8787/');await boot();
+    await page.goto(process.env.GAME_URL || 'http://127.0.0.1:8787/?mode=battle');await boot();
     const initial=await page.evaluate(()=>{
       const g=currentSurvivorRPG;
       return {zoom:g.worldZoom,width:g.camera.width,height:g.camera.height,money:g.money,

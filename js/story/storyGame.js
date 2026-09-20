@@ -1125,7 +1125,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
   }
   startGymTrainerBattleDebug(order = 1, profile = 'normal') {
     const R = window.SurvivorRPG, gymOrder = Number(order);
-    if (!this.debug || !this.story || this.storyBattle || !R.StoryTrainerBattle || ![1, 2, 3].includes(gymOrder)) return false;
+    if (!R.BuildConfig?.DEBUG || !this.debug || !this.story || this.storyBattle || !R.StoryTrainerBattle || ![1, 2, 3].includes(gymOrder)) return false;
     if (!this.partyPokemon.length) return false;
     const version = this.story.switches[666] ? 2 : this.story.switches[64] ? 0 : 1;
     const prefix = `LIDER${gymOrder}|`;
@@ -1195,6 +1195,8 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
       window.SurvivorRPG.StoryState.ensureWildLevelProfile(this.story);
       this.interpreter.state = this.story;
       await this.transferStory(data.story.mapId, data.story.x, data.story.y, data.story.direction);
+      this.playTime=Number(data.playTime)||Number(this.story.playTime)||0;
+      if(data.settings)this.assets.applySettings?.(data.settings);
       if (data.ownedPokemon.length) {
         this.maps[this.map.id] = this.map;
         super.loadGame(data);

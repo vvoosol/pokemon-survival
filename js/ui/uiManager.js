@@ -693,10 +693,12 @@ window.SurvivorRPG.UIManager = class UIManager {
       <div class="menu-list">
         <label class="menu-option">배경 음악 <input aria-label="배경 음악" data-setting="music" data-selectable type="range" min="0" max="100" step="5" value="${Math.round(s.music*100)}"></label>
         <label class="menu-option">효과음 <input aria-label="효과음" data-setting="effects" data-selectable type="range" min="0" max="100" step="5" value="${Math.round(s.effects*100)}"></label>
-        <label class="menu-option"><input data-setting="reducedEffects" data-selectable type="checkbox" ${s.reducedEffects?'checked':''}> 전투 번쩍임 줄이기</label>
+        <label class="menu-option"><input data-setting="mute" data-selectable type="checkbox" ${s.mute?'checked':''}> 전체 음소거</label>
+        <label class="menu-option"><input data-setting="reducedEffects" data-selectable type="checkbox" ${s.reducedEffects?'checked':''}> 전투 이펙트 LOW</label>
         ${game.story ? '<button class="menu-action" data-action="newStory" data-selectable>스토리 새로 시작</button>' : ''}
         <button class="menu-action" data-action="opening" data-selectable>처음 오프닝으로 돌아가기</button>
         <small>진행 상황을 저장하고 모드 선택 화면으로 돌아갑니다.</small>
+        <small>${window.SurvivorRPG.BuildConfig?.VERSION || 'dev'} · Save v${game.saveVersion}</small>
         <button class="menu-action" data-action="back" data-selectable>뒤로</button>
       </div></section>`;
     this.menuRoot.dataset.columns='1';

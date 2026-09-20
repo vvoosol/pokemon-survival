@@ -11,7 +11,7 @@ const fs = require('node:fs');
   const dir = path.join(__dirname,'screenshots'); fs.mkdirSync(dir,{recursive:true});
   const snapshot = name => page.screenshot({path:path.join(dir, name+'.png')});
   try {
-    await page.goto('http://127.0.0.1:8787/');
+    await page.goto(process.env.GAME_URL || 'http://127.0.0.1:8787/?mode=battle');
     await page.waitForFunction(() => window.currentSurvivorRPG?.trainer || window.__bootError);
     assert.equal(await page.evaluate(() => window.__bootError),undefined);
     await page.evaluate(() => { const g=currentSurvivorRPG; g.testTick=g.update.bind(g); g.update=()=>{}; g.messageTimer=0; g.toggleMenu(); g.ui.update(g); });

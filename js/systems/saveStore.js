@@ -1,6 +1,7 @@
 window.SurvivorRPG = window.SurvivorRPG || {};
 window.SurvivorRPG.SaveStore = {
   key:'scientistRpgSave', backup:'scientistRpgSave.backup', journalKey:'scientistRpgResearch',
+  currentVersion() { return window.SurvivorRPG.BuildConfig?.SAVE_VERSION || 5; },
   forMode(mode) {
     if (!['story', 'battle'].includes(mode)) throw Error('Invalid game mode');
     const prefix = mode === 'story' ? 'scientistRpgStory' : 'scientistRpg';
@@ -11,12 +12,61 @@ window.SurvivorRPG.SaveStore = {
     localStorage.removeItem(this.backup);
     localStorage.removeItem(this.journalKey);
   },
+  migrateStory(state) {
+    const R=window.SurvivorRPG;
+    if(!state || typeof state!=='object' || Array.isArray(state))return state;
+    const start={map:Number.isInteger(state.mapId)&&state.mapId>0?state.mapId:1,x:Number.isFinite(state.x)?state.x:9,y:Number.isFinite(state.y)?state.y:7};
+    const base=R.StoryState.create(start,()=>.5);
+    const badges=Array.isArray(state.badges)&&state.badges.length===3?state.badges.map(Boolean):base.badges;
+    const inferredRewards=[];
+    for(let i=0;i<badges.length&&badges[i];i++)inferredRewards.push(i+1);
+    const story={...base,...state,badges,
+      switches:{...base.switches,...(state.switches||{})},variables:{...base.variables,...(state.variables||{})},
+      selfSwitches:{...base.selfSwitches,...(state.selfSwitches||{})},keyItems:{...base.keyItems,...(state.keyItems||{})},
+      gymRewards:Array.isArray(state.gymRewards)?state.gymRewards:inferredRewards};
+    if(typeof state.expShareEnabled!=='boolean')story.expShareEnabled=story.gymRewards.includes(1);
+    if(![1,2,3].includes(state.activeCount))story.activeCount=story.gymRewards.includes(3)?3:story.gymRewards.includes(2)?2:1;
+    return story;
+  },
+  migrate(data) {
+    const R=window.SurvivorRPG;
+    if(!data || typeof data!=='object' || Array.isArray(data))throw Error('Invalid report');
+    const copy=typeof structuredClone==='function'?structuredClone(data):JSON.parse(JSON.stringify(data));
+    const sourceVersion=Number(copy.version ?? 1),current=this.currentVersion();
+    if(!Number.isInteger(sourceVersion)||sourceVersion<1||sourceVersion>current)throw Error('Unsupported save version');
+    copy.gameMode=copy.gameMode || (copy.story ? 'story' : 'battle');
+    copy.playTime=Number.isFinite(copy.playTime)&&copy.playTime>=0?copy.playTime:(Number.isFinite(copy.story?.playTime)&&copy.story.playTime>=0?copy.story.playTime:0);
+    copy.settings=R.normalizeSettings?R.normalizeSettings(copy.settings||{}):(copy.settings||{});
+    copy.balls={pokeBall:10,...(copy.balls||{})};
+    copy.items={potion:0,expShare:false,expShareEnabled:false,doubleBattle:false,tripleBattle:false,...(copy.items||{})};
+    if(copy.money===undefined)copy.money=0;
+    copy.ownedPokemon=Array.isArray(copy.ownedPokemon)?copy.ownedPokemon.map(p=>({growthBonuses:{},equippedMoves:[],teraType:null,hasTerastallized:false,fainted:false,...p})):[];
+    copy.partyIds=Array.isArray(copy.partyIds)?copy.partyIds:[];
+    copy.reserveIds=Array.isArray(copy.reserveIds)?copy.reserveIds:[];
+    copy.selectedId=copy.selectedId ?? copy.partyIds[0] ?? null;
+    copy.trainer={x:100,y:100,direction:'down',...(copy.trainer||{})};
+    copy.currentMapId=copy.currentMapId || 'hub';
+    copy.currentHuntingArea=copy.currentHuntingArea ?? null;
+    if(copy.story)copy.story=this.migrateStory(copy.story);
+    copy.version=current;
+    return copy;
+  },
+  preserveInvalid(raw,error) {
+    if(!raw)return;
+    try {
+      const invalidKey=`${this.key}.invalidBackup`;
+      if(localStorage.getItem(invalidKey)!==raw)localStorage.setItem(invalidKey,raw);
+      localStorage.setItem(`${invalidKey}.timestamp`,String(Date.now()));
+      if(error?.message)localStorage.setItem(`${invalidKey}.reason`,String(error.message).slice(0,160));
+    } catch {}
+  },
   validate(data) {
     const R=window.SurvivorRPG;
     const mode = this.mode || 'battle';
-    if ((data?.gameMode || 'battle') !== mode) throw Error('Save belongs to another mode');
+    data=this.migrate(data);
+    if (data.gameMode !== mode) throw Error('Save belongs to another mode');
     if (mode === 'story') R.StoryState.validate(data.story);
-    if(!data || ![1,2,3,4].includes(data.version) || !Array.isArray(data.ownedPokemon) || mode === 'battle' && !data.ownedPokemon.length)throw Error('Invalid report');
+    if(!data || data.version!==this.currentVersion() || !Number.isFinite(data.playTime)||data.playTime<0 || !Array.isArray(data.ownedPokemon) || mode === 'battle' && !data.ownedPokemon.length)throw Error('Invalid report');
     if(!Array.isArray(data.partyIds)||mode === 'battle' && !data.partyIds.length||!Array.isArray(data.reserveIds))throw Error('Invalid party');
     const ids=new Set();
     for(const p of data.ownedPokemon) {
@@ -53,17 +103,18 @@ window.SurvivorRPG.SaveStore = {
     return data;
   },
   write(data) {
-    this.validate(data);
+    const normalized=this.validate(data);
     const old=localStorage.getItem(this.key);
     if(old)try {this.validate(JSON.parse(old));localStorage.setItem(this.backup,old);}catch{}
-    localStorage.setItem(this.key,JSON.stringify(data));
+    localStorage.setItem(this.key,JSON.stringify(normalized));
   },
   read() {
     for(const key of [this.key,this.backup]) {
+      let raw=null;
       try {
-        const raw=localStorage.getItem(key);if(!raw)continue;
+        raw=localStorage.getItem(key);if(!raw)continue;
         return {data:this.validate(JSON.parse(raw)),recovered:key===this.backup};
-      }catch{}
+      }catch(error){if(key===this.key)this.preserveInvalid(raw,error);}
     }
     return null;
   },

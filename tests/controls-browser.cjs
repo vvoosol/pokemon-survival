@@ -8,7 +8,7 @@ const path=require('node:path');
   const context=await browser.newContext({viewport:{width:1280,height:720},hasTouch:true});
   const page=await context.newPage(),errors=[];
   page.on('pageerror',error=>errors.push(error.message));
-  await page.goto('http://127.0.0.1:8787/');
+  await page.goto(process.env.GAME_URL || 'http://127.0.0.1:8787/?mode=battle');
   await page.waitForFunction(()=>window.currentSurvivorRPG?.trainer);
   const layout=await page.evaluate(()=>{
     const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right};};

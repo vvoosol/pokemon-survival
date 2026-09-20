@@ -42,7 +42,10 @@ test('mode stores preserve legacy battle keys and reject cross-mode imports', ()
   memory.set(battle.key, 'legacy battle checkpoint'); memory.set(battle.journalKey, '{"dex":{"bulbasaur":{"caught":true}}}');
   assert.equal(battle.key, 'scientistRpgSave');
   story.write(data); story.writeJournal({dex: {squirtle: {caught: true}}});
-  assert.deepEqual(story.read().data, data);
+  const migrated = story.read().data;
+  assert.equal(migrated.version, 5); assert.equal(migrated.gameMode, 'story'); assert.equal(migrated.money, data.money);
+  assert.equal(migrated.playTime, 0); assert.deepEqual(migrated.partyIds, []); assert.deepEqual(migrated.reserveIds, []);
+  assert.equal(migrated.story.mapId, data.story.mapId); assert.deepEqual(migrated.story.gymRewards, data.story.gymRewards);
   assert.ok(battle.readJournal().dex.bulbasaur); assert.equal(battle.readJournal().dex.squirtle, undefined);
   assert.throws(() => battle.write(data), /another mode/);
   assert.throws(() => story.write({...data, gameMode: 'battle'}), /another mode/);

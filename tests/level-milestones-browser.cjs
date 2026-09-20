@@ -7,7 +7,7 @@ const path = require('node:path');
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   try {
-    await page.goto('http://127.0.0.1:8787/');
+    await page.goto(process.env.GAME_URL || 'http://127.0.0.1:8787/?mode=battle');
     await page.waitForFunction(() => window.currentSurvivorRPG?.trainer);
     await page.evaluate(() => {
       const g = currentSurvivorRPG;

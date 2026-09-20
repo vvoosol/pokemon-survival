@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 
 const durationMs = Math.max(5_000, Number(process.argv[2] || process.env.STABILITY_MS || 30_000));
 const sampleMs = Math.max(1_000, Math.min(30_000, Number(process.env.STABILITY_SAMPLE_MS || 10_000)));
-const gameUrl = process.argv[3] || process.env.GAME_URL || 'http://127.0.0.1:8787/?mode=battle';
+const gameUrl = process.argv[3] || process.env.GAME_URL || 'http://127.0.0.1:8787/?mode=battle&debug=1';
 
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });

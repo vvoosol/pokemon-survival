@@ -14,7 +14,7 @@ const path = require('node:path');
   const out = path.join(__dirname, 'screenshots');
   fs.mkdirSync(out, { recursive: true });
   try {
-    await page.goto(process.env.GAME_URL || 'http://127.0.0.1:8787/');
+    await page.goto(process.env.GAME_URL || 'http://127.0.0.1:8787/?mode=battle');
     await page.waitForFunction(() => window.currentSurvivorRPG?.trainer || window.__bootError);
     assert.equal(await page.evaluate(() => window.__bootError), undefined);
     await page.evaluate(() => document.fonts.ready);

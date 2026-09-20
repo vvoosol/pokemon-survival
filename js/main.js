@@ -23,7 +23,15 @@ window.addEventListener("DOMContentLoaded", async () => {
   try {
     const modeOverlay = document.getElementById('modeSelectOverlay');
     const resumeOverlay = document.getElementById('resumeSelectOverlay');
+    const newGameConfirmOverlay = document.getElementById('newGameConfirmOverlay');
+    const buildConfig = window.SurvivorRPG.BuildConfig || {};
+    const titleVersion = document.getElementById('titleVersion');
+    if (titleVersion) titleVersion.textContent = buildConfig.VERSION || 'dev';
     const requestedMode = new URLSearchParams(location.search).get('mode');
+    const formatPlayTime = seconds => {
+      const total=Math.max(0,Math.floor(Number(seconds)||0)),hours=Math.floor(total/3600),minutes=Math.floor(total%3600/60),secs=total%60;
+      return hours?`${hours}:${String(minutes).padStart(2,'0')}:${String(secs).padStart(2,'0')}`:`${minutes}:${String(secs).padStart(2,'0')}`;
+    };
     const chooseMode = () => {
       if (requestedMode === 'story' || requestedMode === 'battle') return Promise.resolve(requestedMode);
       setBootStatus('플레이할 모드를 선택하세요.');
@@ -49,6 +57,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       const modeName = mode === 'story' ? '스토리 모드' : '배틀 모드';
       document.getElementById('resumeSelectTitle').textContent = `${modeName} 저장 기록이 있습니다`;
       document.getElementById('resumeSelectMessage').textContent = '이전 진행을 불러오거나 처음부터 다시 시작할 수 있습니다.';
+      const leaderId=saved.data.partyIds?.[0],leader=saved.data.ownedPokemon?.find(p=>p.uniqueId===leaderId);
+      const leaderName=window.SurvivorRPG.PokemonData?.[leader?.speciesId]?.name || '없음';
+      const place=mode==='story'?`스토리 맵 ${saved.data.story?.mapId || '?'}`:(window.SurvivorRPG.Maps?.[saved.data.currentMapId]?.name || saved.data.currentMapId || '허브');
+      document.getElementById('resumeSelectMeta').textContent = `플레이 ${formatPlayTime(saved.data.playTime)} · 위치 ${place} · 선두 ${leaderName}${saved.recovered?' · 백업 복구':''}`;
       resumeOverlay.hidden = false;
       setBootStatus('저장 기록을 선택하세요.');
 
@@ -67,6 +79,7 @@ window.addEventListener("DOMContentLoaded", async () => {
           resumeOverlay.hidden = true;
           document.removeEventListener('keydown', onKeyDown, true);
           buttons.forEach(button => button.classList.remove('is-selected'));
+          loadButton.onclick=null;restartButton.onclick=null;
           resolve(action);
         };
         const onKeyDown = event => {
@@ -76,15 +89,35 @@ window.addEventListener("DOMContentLoaded", async () => {
           if (key === 'z' || key === 'enter') { event.preventDefault(); finish(selected === 0 ? 'load' : 'restart'); return; }
           if (key === 'x' || key === 'escape') { event.preventDefault(); finish('restart'); }
         };
-        loadButton.addEventListener('click', () => finish('load'), {once: true});
-        restartButton.addEventListener('click', () => finish('restart'), {once: true});
+        loadButton.onclick=()=>finish('load');
+        restartButton.onclick=()=>finish('restart');
         document.addEventListener('keydown', onKeyDown, true);
         select(0);
       });
     };
 
+    const confirmNewGame = mode => {
+      const modeName=mode==='story'?'스토리 모드':'배틀 모드';
+      document.getElementById('newGameConfirmMessage').textContent=`${modeName}의 현재 진행 저장본을 삭제합니다. 이 작업은 되돌릴 수 없습니다.`;
+      newGameConfirmOverlay.hidden=false;
+      const cancelButton=document.getElementById('newGameCancelBtn'),confirmButton=document.getElementById('newGameConfirmBtn');
+      const buttons=[cancelButton,confirmButton];let selected=0;
+      const select=index=>{selected=index;buttons.forEach((button,i)=>button.classList.toggle('is-selected',i===selected));buttons[selected].focus({preventScroll:true});};
+      return new Promise(resolve=>{
+        const finish=confirmed=>{newGameConfirmOverlay.hidden=true;document.removeEventListener('keydown',onKeyDown,true);buttons.forEach(button=>button.classList.remove('is-selected'));cancelButton.onclick=null;confirmButton.onclick=null;resolve(confirmed);};
+        const onKeyDown=event=>{const key=event.key.toLowerCase();
+          if(['arrowup','arrowleft'].includes(key)){event.preventDefault();select(0);return;}
+          if(['arrowdown','arrowright'].includes(key)){event.preventDefault();select(1);return;}
+          if(key==='z'||key==='enter'){event.preventDefault();finish(selected===1);return;}
+          if(key==='x'||key==='escape'){event.preventDefault();finish(false);}
+        };
+        cancelButton.onclick=()=>finish(false);confirmButton.onclick=()=>finish(true);document.addEventListener('keydown',onKeyDown,true);select(0);
+      });
+    };
+
     const selectedMode = await chooseMode();
-    const resumeAction = await chooseResumeAction(selectedMode);
+    let resumeAction = await chooseResumeAction(selectedMode);
+    while(resumeAction==='restart' && !await confirmNewGame(selectedMode))resumeAction=await chooseResumeAction(selectedMode);
     if (resumeAction === 'restart') {
       const store = window.SurvivorRPG.SaveStore.forMode(selectedMode);
       localStorage.removeItem(store.key);
@@ -95,15 +128,17 @@ window.addEventListener("DOMContentLoaded", async () => {
     const GameClass = storyRequested ? window.SurvivorRPG.StoryGame : window.SurvivorRPG.Game;
     const game = new GameClass(document.getElementById("gameCanvas"));
     window.currentSurvivorRPG = game;
-    window.startTrainerBattleDebug = (count = 6, profile = 'normal') => game.startTrainerBattleDebug?.(count, profile) || false;
-    window.startTrainerBattle1v1 = (profile = 'normal') => game.startTrainerBattleDebug?.(1, profile) || false;
-    window.startTrainerBattle2v2 = (profile = 'normal') => game.startTrainerBattleDebug?.(2, profile) || false;
-    window.startTrainerBattle3v3 = (profile = 'normal') => game.startTrainerBattleDebug?.(3, profile) || false;
-    window.startTrainerBattle6v6 = (profile = 'normal') => game.startTrainerBattleDebug?.(6, profile) || false;
-    window.startGymTrainerBattleDebug = (order = 1, profile = 'normal') => game.startGymTrainerBattleDebug?.(order, profile) || false;
-    window.startGym1BattleDebug = (profile = 'normal') => game.startGymTrainerBattleDebug?.(1, profile) || false;
-    window.startGym2BattleDebug = (profile = 'normal') => game.startGymTrainerBattleDebug?.(2, profile) || false;
-    window.startGym3BattleDebug = (profile = 'normal') => game.startGymTrainerBattleDebug?.(3, profile) || false;
+    if(buildConfig.DEBUG) {
+      window.startTrainerBattleDebug = (count = 6, profile = 'normal') => game.startTrainerBattleDebug?.(count, profile) || false;
+      window.startTrainerBattle1v1 = (profile = 'normal') => game.startTrainerBattleDebug?.(1, profile) || false;
+      window.startTrainerBattle2v2 = (profile = 'normal') => game.startTrainerBattleDebug?.(2, profile) || false;
+      window.startTrainerBattle3v3 = (profile = 'normal') => game.startTrainerBattleDebug?.(3, profile) || false;
+      window.startTrainerBattle6v6 = (profile = 'normal') => game.startTrainerBattleDebug?.(6, profile) || false;
+      window.startGymTrainerBattleDebug = (order = 1, profile = 'normal') => game.startGymTrainerBattleDebug?.(order, profile) || false;
+      window.startGym1BattleDebug = (profile = 'normal') => game.startGymTrainerBattleDebug?.(1, profile) || false;
+      window.startGym2BattleDebug = (profile = 'normal') => game.startGymTrainerBattleDebug?.(2, profile) || false;
+      window.startGym3BattleDebug = (profile = 'normal') => game.startGymTrainerBattleDebug?.(3, profile) || false;
+    }
     await game.init();
     if(!storyRequested && resumeAction === 'load')game.loadGame();
     const suspend=()=>{
