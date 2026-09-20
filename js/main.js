@@ -95,6 +95,15 @@ window.addEventListener("DOMContentLoaded", async () => {
     const GameClass = storyRequested ? window.SurvivorRPG.StoryGame : window.SurvivorRPG.Game;
     const game = new GameClass(document.getElementById("gameCanvas"));
     window.currentSurvivorRPG = game;
+    window.startTrainerBattleDebug = (count = 6, profile = 'normal') => game.startTrainerBattleDebug?.(count, profile) || false;
+    window.startTrainerBattle1v1 = (profile = 'normal') => game.startTrainerBattleDebug?.(1, profile) || false;
+    window.startTrainerBattle2v2 = (profile = 'normal') => game.startTrainerBattleDebug?.(2, profile) || false;
+    window.startTrainerBattle3v3 = (profile = 'normal') => game.startTrainerBattleDebug?.(3, profile) || false;
+    window.startTrainerBattle6v6 = (profile = 'normal') => game.startTrainerBattleDebug?.(6, profile) || false;
+    window.startGymTrainerBattleDebug = (order = 1, profile = 'normal') => game.startGymTrainerBattleDebug?.(order, profile) || false;
+    window.startGym1BattleDebug = (profile = 'normal') => game.startGymTrainerBattleDebug?.(1, profile) || false;
+    window.startGym2BattleDebug = (profile = 'normal') => game.startGymTrainerBattleDebug?.(2, profile) || false;
+    window.startGym3BattleDebug = (profile = 'normal') => game.startGymTrainerBattleDebug?.(3, profile) || false;
     await game.init();
     if(!storyRequested && resumeAction === 'load')game.loadGame();
     const suspend=()=>{

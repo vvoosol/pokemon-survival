@@ -12,6 +12,8 @@ window.SurvivorRPG.InputManager = class InputManager {
     this.choicePressed = null;
     this.switchPressed = false;
     this.ballPressed = false;
+    this.leaderPressed = false;
+    this.tacticalPressed = false;
     this.partyPressed = false;
     this.menuPressed = false;
     this.setTargetWeakPressed = false;
@@ -34,9 +36,13 @@ window.SurvivorRPG.InputManager = class InputManager {
         this.keys.add('z');
         if (!event.repeat) this.switchPressed = true;
       }
-      if (event.key === "x" || event.key === "X" || event.key === "c" || event.key === "C") {
+      if (event.key === "x" || event.key === "X") {
         event.preventDefault();
-        if (!event.repeat) this.ballPressed = true;
+        if (!event.repeat) { this.ballPressed = true; this.leaderPressed = true; }
+      }
+      if (event.key === "c" || event.key === "C") {
+        event.preventDefault();
+        if (!event.repeat) { this.ballPressed = true; this.tacticalPressed = true; }
       }
       if (event.key === "Tab" || event.key === "v" || event.key === "V") {
         event.preventDefault();
@@ -83,7 +89,10 @@ window.SurvivorRPG.InputManager = class InputManager {
       if (event.code === "KeyZ") this.keys.delete('z');
       else this.keys.delete(event.key.toLowerCase());
     });
-    window.addEventListener('blur', () => { this.keys.clear(); this.switchPressed = false; });
+    window.addEventListener('blur', () => {
+      this.keys.clear();
+      this.switchPressed = this.ballPressed = this.leaderPressed = this.tacticalPressed = this.partyPressed = false;
+    });
   }
 
   bindTouch() {
@@ -118,9 +127,11 @@ window.SurvivorRPG.InputManager = class InputManager {
     }, { heldKey: 'z', activateOnPress: true });
     this.bindActionButton("ballActionBtn", () => {
       this.ballPressed = true;
+      this.leaderPressed = true;
     });
     this.bindActionButton("partyActionBtn", () => {
       this.partyPressed = true;
+      this.tacticalPressed = true;
     });
     this.bindActionButton("menuActionBtn", () => {
       this.menuPressed = true;
@@ -237,6 +248,18 @@ window.SurvivorRPG.InputManager = class InputManager {
   consumeBall() {
     if (!this.ballPressed) return false;
     this.ballPressed = false;
+    return true;
+  }
+
+  consumeLeader() {
+    if (!this.leaderPressed) return false;
+    this.leaderPressed = false;
+    return true;
+  }
+
+  consumeTactical() {
+    if (!this.tacticalPressed) return false;
+    this.tacticalPressed = false;
     return true;
   }
 

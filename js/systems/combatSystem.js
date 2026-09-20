@@ -71,7 +71,9 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
   }
 
   tryPlayerAutoAttacks(player, enemies) {
-    const target = this.nearestEnemy(player, enemies);
+    const assigned = player.aiTarget;
+    const target = assigned && !assigned.dead && enemies.includes(assigned) && !this.isProtected(assigned)
+      ? assigned : this.nearestEnemy(player, enemies);
     if (!target) return;
     for (const slot of player.equippedMoves) {
       const move = this.effectiveMove(player, slot.moveId);
@@ -90,6 +92,7 @@ window.SurvivorRPG.CombatSystem = class CombatSystem {
   enemyAttack(enemy, player) {
     if (enemy.dead || !player || player.dead) return;
     const options=(enemy.equippedMoves || []).filter(id=>{
+      if (enemy.trainerOwned) return !!window.SurvivorRPG.MoveData[id];
       const behavior=window.SurvivorRPG.MoveData[id]?.behavior;
       return enemy.aiType==='artillery'?behavior==='AREA_TARGET':enemy.aiType==='ranged'?['PROJECTILE','MULTI_PROJECTILE','BEAM'].includes(behavior):true;
     });

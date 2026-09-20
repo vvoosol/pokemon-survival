@@ -56,6 +56,8 @@ window.SurvivorRPG.Game = class Game {
     this.currentLevelEvent = null;
     this.currentMoveLearn = null;
     this.choiceLocked = false;
+    this.trainerBattle = null;
+    this.trainerBattleArena = null;
     this.debug = false;
     this.messageText = "";
     this.messageTimer = 0;
@@ -95,6 +97,8 @@ window.SurvivorRPG.Game = class Game {
     this.combatSystem.onLevelUp = (event) => this.enqueueLevelUp(event);
     this.combatSystem.onEnemyDefeated = (enemy) => this.awardParticipantExp(enemy);
     this.combatSystem.onDamage=(cast,target,damage)=>{
+      this.storyBattle?.engine?.recordDamage(cast,target,damage);
+      this.trainerBattle?.recordDamage(cast,target,damage);
       if(cast.team!=='player')return;
       const key=cast.caster.uniqueId;
       this.runStats.damage[key]=(this.runStats.damage[key] || 0)+damage;
@@ -263,6 +267,12 @@ window.SurvivorRPG.Game = class Game {
       this.switchFlash.timer -= dt;
       if (this.switchFlash.timer <= 0) this.switchFlash = null;
     }
+    if (this.trainerBattle) {
+      if (this.updateGrowthModalInput(dt)) return;
+      const result = this.trainerBattle.update(dt);
+      if (result === 'win' || result === 'lose') this.finishTrainerBattleDebug(result === 'win');
+      return;
+    }
     this.updateNearbyNpc();
 
     const forcedRarity = this.debug ? this.input.consumeForceRarity() : null;
@@ -297,34 +307,7 @@ window.SurvivorRPG.Game = class Game {
       return;
     }
 
-    if (this.mode === "moveLearn") {
-      this.ui.navigateChoices(this.input.movementVector(), dt);
-      if(this.input.consumeBall()) {
-        if(this.currentMoveLearn?.confirmForgetIndex !== null) {
-          this.currentMoveLearn.confirmForgetIndex=null;
-          this.ui.showMoveLearning(this.currentMoveLearn,index=>this.selectMoveLearnChoice(index));
-        } else this.selectMoveLearnChoice(4);
-        return;
-      }
-      if (this.input.consumeSwitch()) {
-        this.ui.activateChoice();
-        return;
-      }
-      const choiceIndex = this.input.consumeChoiceIndex();
-      if (choiceIndex !== null) this.selectMoveLearnChoice(choiceIndex);
-      return;
-    }
-
-    if (this.mode === "levelChoice") {
-      this.ui.navigateChoices(this.input.movementVector(), dt);
-      if (this.input.consumeSwitch()) {
-        this.ui.activateChoice();
-        return;
-      }
-      const choiceIndex = this.input.consumeChoiceIndex();
-      if (choiceIndex !== null) this.selectLevelChoice(choiceIndex);
-      return;
-    }
+    if (this.updateGrowthModalInput(dt)) return;
 
     if (this.mode === "transition") {
       this.input.consumeSwitch();
@@ -384,6 +367,37 @@ window.SurvivorRPG.Game = class Game {
       if (this.activePokemon.dead) this.handleActiveFainted();
       this.survival?.finish(this);
     }
+  }
+
+  updateGrowthModalInput(dt) {
+    if (this.mode === "moveLearn") {
+      this.ui.navigateChoices(this.input.movementVector(), dt);
+      if(this.input.consumeBall()) {
+        if(this.currentMoveLearn?.confirmForgetIndex !== null) {
+          this.currentMoveLearn.confirmForgetIndex=null;
+          this.ui.showMoveLearning(this.currentMoveLearn,index=>this.selectMoveLearnChoice(index));
+        } else this.selectMoveLearnChoice(4);
+        return true;
+      }
+      if (this.input.consumeSwitch()) {
+        this.ui.activateChoice();
+        return true;
+      }
+      const choiceIndex = this.input.consumeChoiceIndex();
+      if (choiceIndex !== null) this.selectMoveLearnChoice(choiceIndex);
+      return true;
+    }
+    if (this.mode === "levelChoice") {
+      this.ui.navigateChoices(this.input.movementVector(), dt);
+      if (this.input.consumeSwitch()) {
+        this.ui.activateChoice();
+        return true;
+      }
+      const choiceIndex = this.input.consumeChoiceIndex();
+      if (choiceIndex !== null) this.selectLevelChoice(choiceIndex);
+      return true;
+    }
+    return false;
   }
 
   handleSwitchAction() {
@@ -1324,6 +1338,7 @@ window.SurvivorRPG.Game = class Game {
 
   saveGame(quiet=false) {
     if(this.awaitingStarter || !this.ownedPokemon.length)return false;
+    if(this.trainerBattle)return false;
     // Never checkpoint halfway through a growth choice: its reward is not committed yet.
     if(['levelChoice','moveLearn','transition'].includes(this.mode)||this.levelUpQueue.length)return false;
     try {
@@ -1508,7 +1523,97 @@ window.SurvivorRPG.Game = class Game {
     return Math.max(28, Math.min(this.map.height - 28, y));
   }
 
+  startTrainerBattleDebug(count = 6, profile = 'normal') {
+    if (!this.debug || this.story || this.trainerBattle || !window.SurvivorRPG.TrainerBattleEngine) return false;
+    const activeCount = Math.max(1, Math.min(6, Number(count) || 6));
+    const ids = ['bulbasaur', 'charmander', 'squirtle', 'pikachu', 'pidgey', 'rattata']
+      .filter(id => window.SurvivorRPG.PokemonData[id]);
+    if (!ids.length) return false;
+    const level = 18;
+    const playerParty = Array.from({length: 6}, (_, index) => {
+      const species = window.SurvivorRPG.PokemonData[ids[index % ids.length]];
+      const pokemon = this.createPartyPokemon(species, 300, 384, {level});
+      pokemon.hp = pokemon.maxHp; pokemon.dead = false; pokemon.fainted = false; pokemon.inField = false;
+      return pokemon;
+    });
+    const opponentParty = Array.from({length: 6}, (_, index) => {
+      const species = window.SurvivorRPG.PokemonData[ids[(index + 3) % ids.length]];
+      const data = {...this.spawnSystem.scaledWildData(species, level), radius: 10, scale: .7, aggroRadius: 1200};
+      const pokemon = new window.SurvivorRPG.WildPokemon(data, 724, 384, 'trainer_debug');
+      pokemon.trainerOwned = true; pokemon.inField = false; pokemon.state = 'aggro';
+      return pokemon;
+    });
+    this.trainerBattleArena = {
+      map: this.map, enemies: this.enemies, zones: this.spawnSystem.zones,
+      player: this.player, activePokemon: this.activePokemon, selectedPokemon: this.selectedPokemon,
+      selectedPartyIndex: this.selectedPartyIndex, mode: this.mode,
+      currentMapId: this.currentMapId, currentHuntingArea: this.currentHuntingArea,
+      cameraX: this.camera.x, cameraY: this.camera.y,
+      title: `QA ${activeCount}v${activeCount} · ${profile}`
+    };
+    this.map = {id: 'trainer_debug_arena', name: '트레이너 배틀 QA', width: 1024, height: 768,
+      tileSize: 32, colliders: [], npcs: [], objects: [], spawnZones: [], grassPatches: [], decorations: []};
+    this.camera.world = this.map; this.combatSystem.world = this.map; this.spawnSystem.setMap(this.map);
+    this.enemies = []; this.spawnSystem.zones = []; this.partyBattle.clear(); this.combatSystem.clear();
+    this.trainerBattle = new window.SurvivorRPG.TrainerBattleEngine(this, {
+      playerParty, opponentParty, maxActiveCount: activeCount, opponentMaxActiveCount: activeCount,
+      switchCooldown: 3, aiProfile: profile
+    });
+    if (!this.trainerBattle.begin()) { this.finishTrainerBattleDebug(false); return false; }
+    this.camera.follow(this.trainerBattle.leader, 1);
+    this.message(`트레이너 배틀 QA ${activeCount}v${activeCount} 시작`, 1.5);
+    return true;
+  }
+
+  finishTrainerBattleDebug(won) {
+    const saved = this.trainerBattleArena;
+    if (!saved) return false;
+    this.trainerBattle?.stop(); this.combatSystem.clear();
+    this.map = saved.map; this.camera.world = this.map; this.combatSystem.world = this.map;
+    this.spawnSystem.mapData = this.map; this.spawnSystem.zones = saved.zones;
+    this.enemies = saved.enemies; this.player = saved.player; this.activePokemon = saved.activePokemon;
+    this.selectedPokemon = saved.selectedPokemon; this.selectedPartyIndex = saved.selectedPartyIndex;
+    this.mode = saved.mode; this.currentMapId = saved.currentMapId; this.currentHuntingArea = saved.currentHuntingArea;
+    this.camera.x = saved.cameraX; this.camera.y = saved.cameraY; this.camera.clamp();
+    this.trainerBattle = null; this.trainerBattleArena = null;
+    this.message(won ? '트레이너 배틀 QA 승리' : '트레이너 배틀 QA 종료', 1.5);
+    return true;
+  }
+
+  drawTrainerBattleArena() {
+    const ctx = this.ctx, engine = this.trainerBattle;
+    ctx.clearRect(0, 0, this.width, this.height); ctx.fillStyle = '#172938'; ctx.fillRect(0, 0, this.width, this.height);
+    ctx.save(); ctx.scale(this.worldZoom, this.worldZoom); ctx.translate(-this.camera.x, -this.camera.y);
+    ctx.fillStyle = '#386851'; ctx.fillRect(0, 0, this.map.width, this.map.height);
+    ctx.strokeStyle = '#b8d5bb'; ctx.lineWidth = 4; ctx.strokeRect(48, 72, 928, 624);
+    ctx.beginPath(); ctx.moveTo(512, 72); ctx.lineTo(512, 696); ctx.stroke();
+    ctx.beginPath(); ctx.arc(512, 384, 110, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.scale(this.worldZoom, this.worldZoom);
+    const allies = engine?.playerActive || [], opponents = engine?.opponentActive || [];
+    for (const actor of [...allies, ...opponents].filter(Boolean).sort((a, b) => a.y - b.y)) {
+      this.drawShadow(actor); actor.draw(ctx, this.camera, this.assets, this.combatSystem.poseFor(actor));
+      this.drawPokemonOverheadLabel(actor, allies.includes(actor));
+      if (opponents.includes(actor)) this.drawEnemyHp(actor);
+    }
+    if (this.debug && engine) this.drawTrainerBattleDebug(engine, ctx);
+    this.combatSystem.drawEffects(ctx, this.camera); this.drawSwitchFlash(); ctx.restore();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(this.trainerBattleArena?.title || '트레이너 배틀', this.width / 2, 34);
+  }
+
+  drawTrainerBattleDebug(engine, ctx = this.ctx) {
+    ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 1;
+    for (const actor of [...engine.playerActive, ...engine.opponentActive]) {
+      const target = actor.aiTarget;
+      if (!target || target.dead) continue;
+      ctx.beginPath(); ctx.moveTo(actor.x - this.camera.x, actor.y - this.camera.y);
+      ctx.lineTo(target.x - this.camera.x, target.y - this.camera.y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   draw() {
+    if (this.trainerBattleArena && this.trainerBattle) { this.drawTrainerBattleArena(); return; }
     this.ctx.clearRect(0, 0, this.width, this.height);
     this.ctx.save();
     this.ctx.scale(this.worldZoom,this.worldZoom);

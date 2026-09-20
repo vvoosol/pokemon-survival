@@ -87,72 +87,79 @@ window.SurvivorRPG.StorySpawnSystem = class StorySpawnSystem extends window.Surv
 };
 
 window.SurvivorRPG.StoryTrainerBattle = class StoryTrainerBattle {
-  constructor(game, trainer) { this.game = game; this.trainer = trainer; this.index = 0; this.finished = false; }
+  constructor(game, trainer, options = {}) {
+    this.game = game; this.trainer = trainer; this.options = options;
+    this.finished = false; this.engine = null; this.debugOnly = !!options.debugOnly;
+  }
   async start() {
-    const g = this.game;
+    const g = this.game, R = window.SurvivorRPG;
+    this.previousStoryBusy = g.storyBusy;
+    this.savedPlayerState = this.debugOnly ? {
+      player: g.player, selectedPokemon: g.selectedPokemon, selectedPartyIndex: g.selectedPartyIndex
+    } : null;
     this.wildEnemies = g.enemies; this.zones = g.spawnSystem.zones;
     g.enemies = []; g.spawnSystem.zones = []; g.combatSystem.clear();
     this.isGym = /^LIDER[123](?:REVANCHA)?$/.test(this.trainer.type);
+    g.enterGymArena(this.trainer);
+    const activeCount = Math.max(1, Math.min(6, Number(this.options.activeCount ?? g.story.activeCount) || 1));
     if (this.isGym) {
-      g.enterGymArena(this.trainer);
-      await g.askStory(`체육관 배틀 규칙\n방향키로 이동하며 자동으로 공격합니다. Z로 회수·재출전할 수 있습니다.\n현재 동시 출전: ${g.story.activeCount}마리. 관장의 포켓몬은 포획할 수 없습니다.\n상대 ${this.trainer.party.length}마리를 모두 쓰러뜨리면 승리합니다.\n내 파티가 모두 쓰러지면 포켓몬센터에서 회복하고 모험을 이어갑니다.`, ['배틀 시작']);
+      await g.askStory(`체육관 배틀 규칙\n방향키로 리더를 이동하면 자동으로 공격합니다.\nX: 출전 중 리더 변경 / C: 대기 포켓몬 교체 / ESC: 일시정지\nZ 회수와 포획은 사용할 수 없습니다.\n현재 동시 출전: ${activeCount}마리.\n상대 ${this.trainer.party.length}마리를 모두 쓰러뜨리면 승리합니다.`, ['배틀 시작']);
     }
+    const opponents = this.trainer.party.map((member, index) => this.createOpponent(member, index));
+    this.engine = new R.TrainerBattleEngine(g, {
+      playerParty: this.options.playerParty || g.partyPokemon,
+      opponentParty: opponents,
+      maxActiveCount: activeCount,
+      opponentMaxActiveCount: activeCount,
+      switchCooldown: 3,
+      aiProfile: this.options.aiProfile || 'normal'
+    });
     return new Promise(resolve => {
-      this.resolve = resolve; this.sendNext();
+      this.resolve = resolve;
       g.storyBusy = false; g.menuOpen = false; g.ui.hideGameMenu();
-      if (!g.activePokemon) g.startDeploy();
+      if (!this.engine.begin()) this.finish(false);
     });
   }
-  sendNext() {
+  createOpponent(member, index) {
     const g = this.game, R = window.SurvivorRPG;
-    const member = this.trainer.party[this.index++];
-    if (!member) { this.finish(true); return; }
     const species = R.PokemonData[member.species.toLowerCase()];
     if (!species) throw Error(`Trainer species unavailable: ${member.species}`);
-    const actor = g.activePokemon || g.trainer;
-    const point = this.spawnPoint(actor);
     const data = {...g.spawnSystem.scaledWildData(species, member.level), radius: 10, scale: .7, aggroRadius: 1200};
-    const enemy = new R.WildPokemon(data, point.x, point.y, 'story_trainer');
+    const enemy = new R.WildPokemon(data, 724, 300 + index * 36, 'story_trainer');
     enemy.trainerOwned = true; enemy.nativeTrainerMember = member;
     enemy.abilityId = member.Ability || species.abilities[Number(member.AbilityIndex || 0)];
     if (member.Moves) {
       const ids = member.Moves.split(',').map(id => g.storyData.moveIds[id]).filter(id => R.MoveData[id]?.power > 0);
       if (ids.length) enemy.equippedMoves = ids;
     }
-    enemy.state = 'chase'; g.enemies = [enemy];
+    enemy.state = 'aggro'; enemy.inField = false;
+    return enemy;
   }
-  spawnPoint(actor) {
-    const canStand = window.SurvivorRPG.MovementSystem.canStand;
-    // A nearest free tile can be across a gym wall or pool. Keep the approach
-    // clear as well, so the next trainer Pokemon can actually reach the party.
-    for (const distance of [96, 72, 48, 32]) for (let i = 0; i < 16; i++) {
-      const angle = i * Math.PI / 8, dx = Math.cos(angle), dy = Math.sin(angle);
-      let clear = true;
-      for (let step = 8; step <= distance; step += 8)
-        if (!canStand(this.game.map, actor.x + dx * step, actor.y + dy * step, 10)) { clear = false; break; }
-      if (clear) return {x: actor.x + dx * distance, y: actor.y + dy * distance};
-    }
-    if (canStand(this.game.map, actor.x, actor.y, 10)) return {x: actor.x, y: actor.y};
-    throw Error('No reachable trainer battle spawn');
-  }
-  update() {
-    const g = this.game;
-    if (this.finished || ['levelChoice', 'moveLearn', 'transition'].includes(g.mode)) return;
-    if (g.mode === 'gameOver') { this.finish(false); return; }
-    if (!g.enemies.some(e => !e.dead)) this.sendNext();
+  update(dt) {
+    if (this.finished || !this.engine) return;
+    const result = this.engine.update(dt);
+    if (result === 'win') this.finish(true);
+    else if (result === 'lose') this.finish(false);
   }
   finish(won) {
     if (this.finished) return;
     this.finished = true;
     const g = this.game;
-    if (this.isGym) g.leaveGymArena(won);
+    this.engine?.stop();
+    g.leaveGymArena(this.debugOnly ? true : won);
     g.combatSystem.clear(); g.enemies = this.wildEnemies; g.spawnSystem.zones = this.zones;
-    g.storyBusy = true; g.storyBattle = null;
-    if (won) {
+    g.storyBusy = this.debugOnly ? this.previousStoryBusy : true; g.storyBattle = null;
+    if (this.savedPlayerState) {
+      g.player = this.savedPlayerState.player;
+      g.selectedPokemon = this.savedPlayerState.selectedPokemon;
+      g.selectedPartyIndex = this.savedPlayerState.selectedPartyIndex;
+      g.activePokemon = null;
+    }
+    if (won && !this.debugOnly) {
       const money = Number(g.storyData.trainerTypes[this.trainer.type]?.BaseMoney || 30) * Math.max(...this.trainer.party.map(p => p.level));
       g.money += money; g.runStats.earned += money;
       g.notifyProgress(`${this.trainer.name} · +${money}원`, 'reward');
     }
-    this.resolve(won);
+    this.resolve?.(won);
   }
 };

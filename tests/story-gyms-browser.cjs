@@ -7,9 +7,14 @@ const path = require('node:path');
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('response', r => { if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
+  const finishStoryBoot = async () => {
+    await page.waitForFunction(() => window.currentSurvivorRPG || !document.getElementById('resumeSelectOverlay')?.hidden);
+    if (!await page.evaluate(() => !!window.currentSurvivorRPG)) await page.locator('#resumeLoadBtn').click();
+    await page.waitForFunction(() => window.currentSurvivorRPG?.storyRenderer && !window.currentSurvivorRPG.storyBusy);
+  };
   try {
     await page.goto(process.env.GAME_URL || 'http://127.0.0.1:8787/?mode=story');
-    await page.waitForFunction(() => window.currentSurvivorRPG?.interpreter);
+    await finishStoryBoot();
     // Isolated gym scenario. Overlevelled party shortens battles, but damage, AI,
     // participants, trainer roster, source events and rewards use production code.
     // This does not claim to test the overworld journey between the gyms.
@@ -23,7 +28,7 @@ const path = require('node:path');
       localStorage.setItem('scientistRpgSave', 'battle-mode-sentinel');
     });
     await page.reload();
-    await page.waitForFunction(() => currentSurvivorRPG?.storyRenderer && !currentSurvivorRPG.storyBusy);
+    await finishStoryBoot();
     const setup = () => page.evaluate(() => {
       const g = currentSurvivorRPG; g.tick = g.update.bind(g); g.update = () => {};
       g.interpreter.host.wait = async () => {};
@@ -64,6 +69,37 @@ const path = require('node:path');
       assert.equal(result.items.expShare, true);
       console.log(`PASS: native gym ${order}, real combat, source rewards, ${order} active Pokemon`);
     }
+    const debugGym = await page.evaluate(async () => {
+      const g = currentSurvivorRPG;
+      g.debug = true;
+      const snapshot = () => JSON.stringify({
+        badges: g.story.badges,
+        rewards: g.story.gymRewards,
+        keyItems: g.story.keyItems,
+        switches: g.story.switches,
+        money: g.money,
+        earned: g.runStats.earned
+      });
+      const before = snapshot();
+      const counts = [];
+      for (const order of [1, 2, 3]) {
+        if (!g.startGymTrainerBattleDebug(order, 'strong')) throw Error(`Gym ${order} debug helper did not start`);
+        for (let i = 0; i < 200 && !g.storyBattle?.engine; i++) {
+          if (g.storyDialog.resolve) g.answerStory(0);
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        const battle = g.storyBattle;
+        if (!battle?.engine) throw Error(`Gym ${order} debug engine did not initialize`);
+        counts.push([order, battle.engine.playerActive.length, battle.engine.opponentActive.length]);
+        battle.finish(false);
+        await Promise.resolve();
+      }
+      return { counts, unchanged: before === snapshot(), storyBattle: !!g.storyBattle };
+    });
+    assert.deepEqual(debugGym.counts, [[1, 1, 1], [2, 1, 1], [3, 2, 2]]);
+    assert.equal(debugGym.unchanged, true);
+    assert.equal(debugGym.storyBattle, false);
+    console.log('PASS: Gym1/2/3 debug helpers use pre-unlock active counts and do not modify progress/rewards');
     const before = await page.evaluate(async () => {
       const g = currentSurvivorRPG;
       g.menuOpen = false;
@@ -84,7 +120,7 @@ const path = require('node:path');
     assert.deepEqual(before.on, [10, 7, 7, 7]);
     assert.equal(before.story.keyItems.ROCKSMASHITEM, 1); assert.equal(before.story.keyItems.LIGHTBALL, 1);
     await page.reload();
-    await page.waitForFunction(() => currentSurvivorRPG?.storyRenderer && !currentSurvivorRPG.storyBusy);
+    await finishStoryBoot();
     const after = await page.evaluate(() => {
       const g = currentSurvivorRPG; g.update = () => {};
       return {story: g.story, positions: g.storyPositions, erased: [...g.erasedStoryEvents], items: g.items,

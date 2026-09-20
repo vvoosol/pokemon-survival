@@ -966,7 +966,11 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
       const index = this.input.consumeChoiceIndex(); if (index !== null && d.buttons[index]) this.answerStory(index);
       return;
     }
-    if (this.storyBattle) { super.update(dt); this.storyBattle?.update(); return; }
+    if (this.storyBattle) {
+      if (this.updateGrowthModalInput(dt)) return;
+      this.storyBattle?.update(dt);
+      return;
+    }
     if (this.storyError) {
       if (this.input.consumeBall() || this.input.consumeMenu() || this.input.consumeSwitch()) this.recoverStoryState();
       return;
@@ -1036,7 +1040,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     this.runStoryProxy(npc.sourceMapId, npc.eventId, undefined, npc);
   }
   handleBallAction() {
-    if (this.storyBattle && this.mode === 'trainer') { this.message('트레이너의 포켓몬은 잡을 수 없습니다.', 2); return; }
+    if (this.storyBattle) { this.message('트레이너의 포켓몬은 잡을 수 없습니다.', 2); return; }
     super.handleBallAction();
   }
   awardParticipantExp(enemy) {
@@ -1118,6 +1122,45 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (!count || count > window.SurvivorRPG.StoryState.maxActive(this.story)) return false;
     this.story.activeCount = count;
     this.syncStoryUnlocks(); this.ui.showGameMenu(this); return true;
+  }
+  startGymTrainerBattleDebug(order = 1, profile = 'normal') {
+    const R = window.SurvivorRPG, gymOrder = Number(order);
+    if (!this.debug || !this.story || this.storyBattle || !R.StoryTrainerBattle || ![1, 2, 3].includes(gymOrder)) return false;
+    if (!this.partyPokemon.length) return false;
+    const version = this.story.switches[666] ? 2 : this.story.switches[64] ? 0 : 1;
+    const prefix = `LIDER${gymOrder}|`;
+    const entry = Object.entries(this.storyData.trainers).find(([key]) => key.startsWith(prefix) && key.endsWith(`|${version}`));
+    if (!entry) { this.message(`Gym ${gymOrder} 원본 트레이너 데이터를 찾을 수 없습니다.`, 2); return false; }
+    const tempParty = this.partyPokemon.map((pokemon) => {
+      const species = R.PokemonData[pokemon.speciesId];
+      if (!species) return null;
+      const equippedMoves = (pokemon.equippedMoves || []).map((move) => typeof move === 'string' ? move : {...move});
+      return this.createPartyPokemon(species, 300, 384, {
+        level: pokemon.level,
+        equippedMoves,
+        abilityId: pokemon.abilityId,
+        baseTypes: pokemon.baseTypes || pokemon.types,
+        teraType: pokemon.teraType || null,
+        hasTerastallized: !!pokemon.hasTerastallized,
+        growthBonuses: pokemon.growthBonuses ? {...pokemon.growthBonuses} : undefined
+      });
+    }).filter(Boolean);
+    if (!tempParty.length) return false;
+    const activeCount = [1, 1, 2][gymOrder - 1];
+    const battle = new R.StoryTrainerBattle(this, entry[1], {
+      debugOnly: true, playerParty: tempParty, activeCount, aiProfile: profile
+    });
+    this.storyBattle = battle;
+    battle.start().then((won) => this.message(`Gym ${gymOrder} QA ${won ? '승리' : '패배'} · 진행도/보상 미반영`, 2))
+      .catch((error) => {
+        if (this.storyBattle === battle) this.storyBattle = null;
+        if (this.gymArena) this.leaveGymArena(true);
+        this.enemies = battle.wildEnemies || this.enemies;
+        if (battle.zones) this.spawnSystem.zones = battle.zones;
+        this.message(`Gym ${gymOrder} QA 오류: ${error.message}`, 3);
+        console.error(error);
+      });
+    return true;
   }
   buyItem(id) {
     if (['expShare', 'doubleBattle', 'tripleBattle'].includes(id)) {

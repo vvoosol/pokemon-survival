@@ -20,10 +20,13 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.choiceOverlay = document.getElementById("levelChoiceOverlay");
     this.choiceTitle = document.getElementById("choiceTitle");
     this.choiceCards = document.getElementById("choiceCards");
+    this.switchActionBtn = document.getElementById("switchActionBtn");
     this.switchActionLabel = document.getElementById("switchActionLabel");
     this.xActionLabel = document.getElementById("xActionLabel");
     this.ballActionBtn = document.getElementById("ballActionBtn");
+    this.ballCounter = document.querySelector(".ball-counter");
     this.partyActionBtn = document.getElementById("partyActionBtn");
+    this.menuActionBtn = document.getElementById("menuActionBtn");
     this.menuOverlay = document.getElementById("mainMenuOverlay");
     this.menuWindow = this.menuOverlay.querySelector(".menu-window");
     this.menuRoot = document.getElementById("menuRoot");
@@ -39,6 +42,8 @@ window.SurvivorRPG.UIManager = class UIManager {
   update(game) {
     const player = game.player;
     if (!player) return;
+    const trainerEngine = game.storyBattle?.engine || game.trainerBattle || null;
+    const trainerBattleUi = !!trainerEngine && !["levelChoice", "moveLearn"].includes(game.mode);
     this.currentGame = game;
     document.getElementById('gameRoot').dataset.awaitingStarter = String(!!game.awaitingStarter);
     this.playerName.textContent = player.name;
@@ -51,8 +56,16 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.ballCount.textContent = `x${game.balls.pokeBall}`;
     this.switchActionLabel.textContent = this.zActionText(game);
     this.xActionLabel.textContent = this.xActionText(game);
-    this.ballActionBtn.disabled = game.mode === "trainer" && game.balls.pokeBall <= 0;
-    this.partyActionBtn.disabled = game.partyPokemon.filter((pokemon) => pokemon && !pokemon.dead).length < 2;
+    this.switchActionBtn.hidden = trainerBattleUi;
+    this.ballCounter.hidden = trainerBattleUi;
+    this.ballActionBtn.disabled = trainerBattleUi
+      ? trainerEngine.playerActive.filter((pokemon) => pokemon && !pokemon.dead).length < 2
+      : game.mode === "trainer" && game.balls.pokeBall <= 0;
+    this.partyActionBtn.disabled = trainerBattleUi
+      ? trainerEngine.playerReserves().length === 0 || trainerEngine.playerSwitchCooldown > 0
+      : game.partyPokemon.filter((pokemon) => pokemon && !pokemon.dead).length < 2;
+    this.partyActionBtn.textContent = trainerBattleUi ? "교체" : "SELECT";
+    this.menuActionBtn.textContent = trainerBattleUi ? "PAUSE" : "START";
     this.renderMoveCooldowns(game, player);
     this.renderParty(game);
     this.levelToast.hidden = !game.progressNotice;
@@ -64,7 +77,7 @@ window.SurvivorRPG.UIManager = class UIManager {
     this.updateSurvival(game);
     this.debugPanel.hidden = !game.debug;
     if (game.debug) {
-      this.debugPanel.textContent = [
+      const debugLines = [
         `FPS ${game.fps.toFixed(0)}`,
         `모드 ${game.mode}`,
         `맵 ${game.map.name}`,
@@ -73,7 +86,25 @@ window.SurvivorRPG.UIManager = class UIManager {
         `적 ${game.enemies.filter((enemy) => !enemy.dead).length}`,
         `파티 ${game.partyPokemon.length} / 보유 ${game.ownedPokemon.length}`,
         `소지금 ${game.money}원`
-      ].join("\n");
+      ];
+      if (trainerEngine) {
+        debugLines.push(
+          `TB ${trainerEngine.phase} · AI ${trainerEngine.trainerAI.profile.name}`,
+          `Active ${trainerEngine.playerActive.length}v${trainerEngine.opponentActive.length} · 교체 ${trainerEngine.playerSwitchCooldown.toFixed(1)}s`
+        );
+        for (const pokemon of [...trainerEngine.playerActive, ...trainerEngine.opponentActive]) {
+          const target = pokemon.aiTarget;
+          const role = trainerEngine.pokemonAI.inferRole(pokemon);
+          const threat = trainerEngine.trainerAI.threat.get(pokemon.uniqueId) || 0;
+          const cast = game.combatSystem.telegraphs.find((entry) => entry.caster === pokemon)
+            || game.combatSystem.meleeSwings.find((entry) => entry.cast?.caster === pokemon)?.cast;
+          const moveName = cast?.move?.name || '-';
+          const cooldown = pokemon.equippedMoves?.reduce((best, slot) => Math.max(best,
+            typeof slot === 'object' ? Number(slot.cooldownRemaining || 0) : 0), 0) || pokemon.attackCooldown || 0;
+          debugLines.push(`${pokemon.name}: ${pokemon.trainerBattleState || 'combat'} · ${role.role}/${role.preferredRange.toFixed(0)} · T ${target?.name || '-'} ${Number(pokemon.trainerTargetScore || 0).toFixed(1)} · M ${moveName} · CD ${Number(cooldown).toFixed(1)} · TH ${Number(threat).toFixed(0)} · SW ${Number(pokemon.trainerSwitchScore || 0).toFixed(2)}`);
+        }
+      }
+      this.debugPanel.textContent = debugLines.join("\n");
     }
   }
 
@@ -90,6 +121,7 @@ window.SurvivorRPG.UIManager = class UIManager {
   }
 
   zActionText(game) {
+    if ((game.storyBattle?.engine || game.trainerBattle) && !["levelChoice", "moveLearn"].includes(game.mode)) return "사용 안 함";
     if (game.mode === 'trainer' && game.trainer.running && !game.menuOpen) return '달리기';
     if (game.mode === "survivalClear") return "귀환";
     if (game.menuOpen || game.mode === "levelChoice" || game.mode === "moveLearn") return "결정";
@@ -98,6 +130,7 @@ window.SurvivorRPG.UIManager = class UIManager {
   }
 
   xActionText(game) {
+    if ((game.storyBattle?.engine || game.trainerBattle) && !["levelChoice", "moveLearn"].includes(game.mode)) return "리더 변경";
     if (game.mode === "survivalClear") return "귀환";
     if (game.menuOpen) return "뒤로";
     if (game.mode === "pokemon") return "교체";

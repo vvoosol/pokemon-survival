@@ -107,11 +107,17 @@ Object.assign(window.SurvivorRPG.StoryGame.prototype, {
     ctx.beginPath(); ctx.arc(512, 384, 110, 0, Math.PI * 2); ctx.stroke();
     ctx.beginPath(); ctx.arc(512, 384, 22, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
     ctx.save(); ctx.scale(this.worldZoom, this.worldZoom);
-    const actors = [this.activePokemon || this.trainer, ...this.partyBattle.members, ...this.enemies];
+    const engine = this.storyBattle?.engine;
+    const allies = engine?.playerActive || [this.activePokemon || this.trainer, ...this.partyBattle.members];
+    const opponents = engine?.opponentActive || this.enemies;
+    const actors = [...allies, ...opponents].filter(Boolean);
     for (const actor of [...new Set(actors)].sort((a, b) => a.y - b.y)) {
+      this.drawShadow(actor);
       actor.draw(ctx, this.camera, this.assets, this.combatSystem.poseFor(actor));
-      if (this.enemies.includes(actor)) this.drawEnemyHp(actor);
+      if (actor !== this.trainer) this.drawPokemonOverheadLabel(actor, allies.includes(actor));
+      if (opponents.includes(actor)) this.drawEnemyHp(actor);
     }
+    if (this.debug && engine) this.drawTrainerBattleDebug(engine, ctx);
     this.combatSystem.drawEffects(ctx, this.camera); ctx.restore();
     ctx.fillStyle = '#fff'; ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(`${this.gymArena.name} 관장전`, this.width / 2, 36);
