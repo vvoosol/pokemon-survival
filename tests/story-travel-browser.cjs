@@ -54,6 +54,38 @@ const fs = require('node:fs');
       return result;
     });
     console.log('PASS NPC doors',JSON.stringify(placement));
+    const storyFixes = await page.evaluate(async () => {
+      const g=currentSurvivorRPG;
+      await g.transferStory(4,52,38);g.storyBusy=false;
+      const seller=g.storyProxyNpcs.find(p=>p.id==='viridian-ball-seller');
+      const money=g.money,balls=g.balls.pokeBall,ask=g.askStory;
+      g.askStory=async()=>0;await g.runViridianBallShop();g.askStory=ask;
+      const sellerWorks=!!seller&&g.money===money-50&&g.balls.pokeBall===balls+1;
+      const active=g.storyRenderer.activeEvents(g.story);
+      const tree=active.find(({event,page})=>g.isCutTreeEvent(event,page));
+      const treePos=g.storyPositions[tree.event.id]||tree.event;
+      const treeBlocked=!SurvivorRPG.MovementSystem.canStand(g.map,(treePos.x+.5)*32,(treePos.y+.5)*32,10);
+      g.story.keyItems.CUTITEM=1;await g.storyScript('pbSmashThisEvent',{mapId:4,eventId:tree.event.id});
+      const treeOpened=SurvivorRPG.MovementSystem.canStand(g.map,(treePos.x+.5)*32,(treePos.y+.5)*32,10);
+      return {sellerWorks,treeBlocked,treeOpened};
+    });
+    assert.deepEqual(storyFixes,{sellerWorks:true,treeBlocked:true,treeOpened:true});
+    console.log('PASS Viridian seller and Cut tree collision',storyFixes);
+    const routeSafety = await page.evaluate(async () => {
+      const g=currentSurvivorRPG;await g.transferStory(4,52,38);g.storyBusy=false;
+      const active=g.storyRenderer.activeEvents(g.story);
+      const missing=active.find(({event,pageIndex})=>g.unsupportedStoryTransfer(event,pageIndex));
+      if(!missing)throw Error('Unsupported transfer fixture missing');
+      const pos=g.storyPositions[missing.event.id]||missing.event;
+      const blocked=!SurvivorRPG.MovementSystem.canStand(g.map,(pos.x+.5)*32,(pos.y+.5)*32,10);
+      await g.runStoryEvent(missing.event,missing.pageIndex);
+      g.suspended=false;g.tick(.05);g.suspended=true;
+      return {blocked,stayed:g.story.mapId===4&&!g.storyError,
+        functionalOnly:g.map.npcs.every(n=>n.proxy||String(n.id).startsWith('cut-')),
+        nativeHidden:g.hiddenStoryNativeEvents().size>0};
+    });
+    assert.deepEqual(routeSafety,{blocked:true,stayed:true,functionalOnly:true,nativeHidden:true});
+    console.log('PASS blocked routes and filtered NPCs',routeSafety);
     const viridianWest = await page.evaluate(async () => {
       const g=currentSurvivorRPG;
       g.story.switches[69]=true;
@@ -126,7 +158,9 @@ const fs = require('node:fs');
     assert.equal(recovery.map,9);assert.ok(recovery.distance<=48);assert.deepEqual(recovery.after,recovery.before);
     console.log('PASS defeat preserves progress and heals at nearby center');
     await page.reload();
-    await page.waitForFunction(()=>currentSurvivorRPG?.storyRenderer?.map&&!currentSurvivorRPG.storyBusy);
+    await page.waitForSelector('#resumeSelectOverlay:not([hidden])');
+    await page.click('#resumeLoadBtn');
+    await page.waitForFunction(()=>typeof currentSurvivorRPG!=='undefined'&&currentSurvivorRPG.storyRenderer?.map&&!currentSurvivorRPG.storyBusy);
     assert.equal(await page.evaluate(()=>currentSurvivorRPG.story.badges[0]),true);
     assert.deepEqual(errors,[]); console.log('PASS reload after recovery; no missing resources or runtime errors');
   } finally {await browser.close();}

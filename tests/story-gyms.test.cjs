@@ -255,6 +255,7 @@ test('defeat returns to Oak before Viridian and to the Viridian checkpoint after
       g.camera = {follow() {}}; g.map = {};
       g.trainer.radius = 10;
       g.storyProxyNpcs = [];
+      g.nearestStoryCenter = async () => ({mapId: 4, npcId: 'viridian-joy', x: 52, y: 38});
       let destination, healed = false, saved = false, message = '';
       g.transferStory = async (mapId, x, y) => {
         destination = {mapId, x, y};

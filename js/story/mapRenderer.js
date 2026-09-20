@@ -61,7 +61,7 @@ window.SurvivorRPG.StoryMapRenderer = class StoryMapRenderer {
       event.x * 32 + 16 - width / 2 - camera.x, (event.y + 1) * 32 - height - camera.y, width, height);
     ctx.restore();
   }
-  draw(ctx, camera, state, seconds = 0, actors = [], positions = {}, erased = new Set()) {
+  draw(ctx, camera, state, seconds = 0, actors = [], positions = {}, erased = new Set(), hidden = new Set()) {
     if (!this.map) return;
     const map = this.map, foreground = [];
     ctx.imageSmoothingEnabled = false;
@@ -75,7 +75,7 @@ window.SurvivorRPG.StoryMapRenderer = class StoryMapRenderer {
       if (priority) foreground.push({y: (y + priority) * 32, order: z, draw}); else draw();
     }
     for (const {event, page} of this.activeEvents(state)) {
-      if (erased.has(event.id)) continue;
+      if (erased.has(event.id) || hidden.has(event.id)) continue;
       const placed = {...event, ...positions[event.id]};
       const visiblePage = {...page, graphic: {...page.graphic, ...(placed.direction ? {direction: placed.direction} : {})}};
       foreground.push({y: page.always_on_top ? Infinity : (placed.y + 1) * 32 - 1, order: 3,

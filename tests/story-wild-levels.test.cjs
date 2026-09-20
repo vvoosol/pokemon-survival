@@ -83,3 +83,17 @@ test('story spawn tables use the progression band instead of native encounter le
   assert.deepEqual(zones[0].spawnTable.map(p => p.speciesId), ['early', 'mid']);
   assert.ok(zones[0].spawnTable.every(p => p.minLevel >= 10 && p.maxLevel === 19));
 });
+
+test('story random encounters exclude species that still have English display names', () => {
+  R.PokemonData = {
+    korean: {id: 'korean', sourceId: 'KOREAN', name: '구구', level: 3, generation: 2},
+    english: {id: 'english', sourceId: 'ENGLISH', name: 'Pidgey', level: 3, generation: 2}
+  };
+  const renderer = {
+    map: {id: 5, width: 1, height: 1},
+    tileset: {terrain_tags: {values: {1: 2}}, passages: {values: {1: 0}}, priorities: {values: {1: 0}}},
+    tileAt: () => 1
+  };
+  const zones = R.StorySpawnSystem.zones(renderer, {Land: [{minLevel: 3, maxLevel: 6}]}, false, {min: 3, max: 6});
+  assert.deepEqual(zones[0].spawnTable.map(p => p.speciesId), ['korean']);
+});

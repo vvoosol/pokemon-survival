@@ -62,7 +62,8 @@ window.SurvivorRPG.StorySpawnSystem = class StorySpawnSystem extends window.Surv
     const maxLevel = Number.isInteger(levelRange?.max) ? levelRange.max : sourceMax;
     const candidates = Object.values(window.SurvivorRPG.PokemonData).filter(species => {
       const start = Number(species.level) || 1;
-      return start <= maxLevel && (!species.generation || [2,3,4,5,6].includes(species.generation));
+      return start <= maxLevel && (species.name == null || /[가-힣]/.test(String(species.name))) &&
+        (!species.generation || [2,3,4,5,6].includes(species.generation));
     });
     const randomizedTable = candidates.map(species => ({
       species: species.sourceId || species.id.toUpperCase(), speciesId: species.id,

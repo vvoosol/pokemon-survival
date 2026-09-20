@@ -25,13 +25,6 @@ Object.assign(window.SurvivorRPG.StoryGame.prototype, {
       return {x: npc.x, y: npc.y, direction: 2};
     };
     for (const npc of this.storyProxyNpcs) Object.assign(npc, place(npc, npc.action === 'bill' ? 176 : npc.sourceMapId));
-    const species = new Set(Object.values(window.SurvivorRPG.PokemonData).map(p => p.sourceId));
-    for (const event of Object.values(this.storyRenderer.map.events)) {
-      if (doors.includes(event)) continue;
-      const human = event.pages.some(p => p.trigger === 0 && p.graphic.character_name &&
-        !species.has(p.graphic.character_name) && !/door|puerta|item|ball|tree|rock|follower/i.test(p.graphic.character_name));
-      if (human) this.storyPositions[event.id] = place(event);
-    }
   },
   async nearestStoryCenter() {
     const queue = [this.story.mapId], seen = new Set(queue);
@@ -55,10 +48,8 @@ Object.assign(window.SurvivorRPG.StoryGame.prototype, {
       let center;
       if (!this.story.reachedViridian) {
         center = {mapId: 2, npcId: 'oak-starter', x: 27, y: 31, professor: true};
-      } else if (this.story.healingSpot) {
-        center = {mapId: this.story.healingSpot.mapId, x: this.story.healingSpot.x, y: this.story.healingSpot.y};
       } else {
-        center = {mapId: 4, npcId: 'viridian-joy', x: 52, y: 38};
+        center = await this.nearestStoryCenter();
       }
       this.combatSystem.clear(); this.partyBattle.clear();
       this.levelUpQueue = []; this.currentLevelEvent = this.currentMoveLearn = null;

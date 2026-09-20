@@ -21,6 +21,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     this.storyPreviousMapState = null;
     this.storyEntryPoint = null;
     this.storyFailedEvent = null;
+    this.storyBaseColliders = [];
   }
   reset() { super.reset({starterPending: true}); }
   resetAtProfessor() {
@@ -510,8 +511,9 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
         if (!tileset.priorities.values[tile]) break;
       }
     }
+    this.storyBaseColliders = colliders;
     this.map = {id: `story_${id}`, name: this.storyMapName(map.name), width: map.width * 32, height: map.height * 32,
-      tileSize: 32, playerStart: {x: (x + .5) * 32, y: (y + .5) * 32}, colliders, npcs: [], objects: [], spawnZones: []};
+      tileSize: 32, playerStart: {x: (x + .5) * 32, y: (y + .5) * 32}, colliders: [...colliders], npcs: [], objects: [], spawnZones: []};
     const wildLevelRange = window.SurvivorRPG.StoryState.wildLevelRange(this.story, id);
     this.map.spawnZones = window.SurvivorRPG.StorySpawnSystem.zones(this.storyRenderer,
       this.storyData.encounters[id] || {}, !!this.story.switches[64], wildLevelRange);
@@ -529,6 +531,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (this.story.mapEvents?.mapId !== id) delete this.story.mapEvents;
     await this.prepareStoryProxies(id);
     this.placeStoryNpcsAtDoors();
+    this.refreshStoryColliders();
     if (id === 4 && !this.story.reachedViridian) {
       this.story.reachedViridian = true;
       this.story.healingSpot = {mapId: 4, x: 52, y: 38, direction: 2};
@@ -542,7 +545,8 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
         {id: 'oak-starter', label: '오박사', x: 27, y: 30, sourceMapId: 29, eventId: 1, action: 'starter'}
       ]},
       4: {blocked: [44], proxies: [
-        {id: 'viridian-joy', label: '간호순', x: 52, y: 37, sourceMapId: 31, eventId: 6, choicePrompt: '포켓몬을 치료할까요?'}
+        {id: 'viridian-joy', label: '간호순', x: 52, y: 37, sourceMapId: 31, eventId: 6, choicePrompt: '포켓몬을 치료할까요?'},
+        {id: 'viridian-ball-seller', label: '몬스터볼 상인', x: 48, y: 37, sourceMapId: 31, eventId: 8, action: 'ball-shop'}
       ]},
       5: {blocked: [11], proxies: []},
       9: {blocked: [35, 36, 37], proxies: [
@@ -672,11 +676,50 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     return x >= pos.x && x < pos.x + Number(size?.[1] || 1) &&
       y <= pos.y && y > pos.y - Number(size?.[2] || 1);
   }
+  unsupportedStoryTransfer(event, pageIndex) {
+    const page = event?.pages?.[pageIndex];
+    return page?.list?.find(command => command.code === 201 && command.parameters?.[0] === 0 &&
+      !this.storyRenderer.manifest.maps[command.parameters[1]]) || null;
+  }
+  isCutTreeEvent(event, page) {
+    const activePage = typeof page === 'number' ? event?.pages?.[page] : page;
+    return !!activePage && activePage.through === false &&
+      (/cuttree/i.test(String(event?.name || '')) || /arbolito/i.test(String(activePage.graphic?.character_name || '')));
+  }
+  isNativeHumanEvent(event, page) {
+    const graphic = String(page?.graphic?.character_name || '');
+    if (page?.trigger !== 0 || !graphic || this.isCutTreeEvent(event, page) || /objeto/i.test(graphic)) return false;
+    return !/door|puerta|item|objeto|ball|tree|arbol|rock|roca|follower|sign|cartel|boulder|smash|cut|arbusto|plant|planta/i
+      .test(`${event?.name || ''} ${graphic}`);
+  }
+  hiddenStoryNativeEvents() {
+    const hidden = new Set(), blocked = new Set(this.storyOutdoorPlan().blocked);
+    for (const {event, page} of this.storyRenderer.activeEvents(this.story)) {
+      if (this.erasedStoryEvents.has(event.id) || blocked.has(event.id)) continue;
+      if (this.isNativeHumanEvent(event, page)) hidden.add(event.id);
+    }
+    return hidden;
+  }
+  refreshStoryColliders() {
+    if (!this.map || !this.storyRenderer?.map) return;
+    const dynamic = [], blocked = new Set(this.storyOutdoorPlan().blocked);
+    for (const {event, pageIndex, page} of this.storyRenderer.activeEvents(this.story)) {
+      if (this.erasedStoryEvents.has(event.id) || blocked.has(event.id)) continue;
+      if (!this.isCutTreeEvent(event, page) && !this.unsupportedStoryTransfer(event, pageIndex)) continue;
+      const pos = this.storyPositions[event.id] || event;
+      const size = String(event.name || '').match(/size\((\d+),\s*(\d+)\)/i);
+      const width = Number(size?.[1] || 1), height = Number(size?.[2] || 1);
+      for (let dx = 0; dx < width; dx++) for (let dy = 0; dy < height; dy++)
+        dynamic.push({x: (pos.x + dx) * 32, y: (pos.y - dy) * 32, width: 32, height: 32});
+    }
+    this.map.colliders = [...this.storyBaseColliders, ...dynamic];
+  }
   async storyCommand(command, frame) {
     const p = command.parameters;
     if (command.code === 116) {
       if (frame.mapId === this.storyRenderer.map?.id) this.erasedStoryEvents.add(frame.eventId);
       else this.storySourceErased.add(`${frame.mapId}:${frame.eventId}`);
+      if (frame.mapId === this.storyRenderer.map?.id) this.refreshStoryColliders();
       return;
     }
     if (command.code === 202) {
@@ -722,6 +765,13 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
   }
   async storyScript(script, frame) {
     const text = script.trim();
+    if (/^pb(?:Erase|Smash)ThisEvent(?:\(\))?$/.test(text)) {
+      if (frame.mapId === this.storyRenderer.map?.id) {
+        this.erasedStoryEvents.add(frame.eventId);
+        this.refreshStoryColliders();
+      } else this.storySourceErased.add(`${frame.mapId}:${frame.eventId}`);
+      return true;
+    }
     // A 355/655 block may contain several independent native calls.
     if (text.includes('\n') && text.split('\n').every(line => /^(pbReceiveItem|pbItemBall|pbGetKeyItem|pbSetSelfSwitch)\(/.test(line.trim()))) {
       for (const line of text.split('\n')) await this.storyScript(line, frame);
@@ -775,6 +825,8 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (script === 'false' || script.startsWith('false #')) return false;
     if (/^ChallengeModes\.on\?(?:\(:(?:MODOASISTIDO|PERMALOCKE_RESTORES)\))?$/.test(script)) return false;
     if (script === '$PokemonSystem.guardar_al_curar?') return false;
+    if (script.includes('quantity(:CUTITEM)') && script.includes('>')) return Number(this.story.keyItems.CUTITEM || 0) > 0;
+    if (/^pbCut(?:\(\))?$/.test(script)) return Number(this.story.keyItems.CUTITEM || 0) > 0;
     const playerY = script.match(/^\$game_player\.y == (\d+)$/);
     if (playerY) return this.storyPosition(-1, frame).y === Number(playerY[1]);
     if (/^(pbItemBall|pbReceiveItem|pbAddPokemon)\(/.test(script)) return this.storyScript(script, frame);
@@ -811,6 +863,8 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
   async runStoryEvent(event, pageIndex) {
     if (this.storyBusy || this.storyError || this.storyBattle || !['trainer', 'pokemon'].includes(this.mode)) return;
     if (this.collectPokeballFieldEvent(event, pageIndex)) return;
+    const blockedTransfer = this.unsupportedStoryTransfer(event, pageIndex);
+    if (blockedTransfer) return;
     if (this.isLockedPalletExit(event)) {
       this.storyBusy = true;
       try {
@@ -860,6 +914,23 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     const firstDone = !!this.story.switches[81], rewardDone = !!this.story.switches[83];
     if (rewardDone) { await this.askStory('빌: 덕분에 실험은 끝났어. 갈색시티에서 S.S. 안느호 티켓을 써 봐!'); return; }
     await this.runStoryProxy(62, firstDone ? 4 : 3, undefined, npc);
+  }
+  async runViridianBallShop() {
+    if (this.storyBusy) return;
+    this.storyBusy = true;
+    try {
+      const price = Number(window.SurvivorRPG.ItemData?.pokeBall?.price || 50);
+      const quantities = [1, 5, 10];
+      const choice = await this.askStory(`몬스터볼은 1개 ${price}원입니다. 현재 소지금: ${this.money}원`,
+        quantities.map(qty => `${qty}개 · ${qty * price}원`).concat('취소'), 3);
+      const qty = quantities[choice];
+      if (!qty) return;
+      const cost = qty * price;
+      if (this.money < cost) { await this.askStory(`${cost}원이 필요합니다.`); return; }
+      this.money -= cost;
+      this.receiveStoryItem('POKEBALL', qty);
+      await this.askStory(`몬스터볼 ${qty}개를 샀습니다. 남은 소지금: ${this.money}원`);
+    } finally { this.storyBusy = false; }
   }
   update(dt) {
     if (!this.storyRenderer || this.suspended) return;
@@ -920,12 +991,13 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
       const bump = blocked && active.find(({event, page}) => [1, 2].includes(page.trigger) && this.storyEventContains(event, tx + dx, ty + dy) && page.list.some(c => c.code !== 0));
       if (bump) { this.runStoryEvent(bump.event, bump.pageIndex); return; }
     }
-    const nativeNpcs = active.filter(({page}) => page.trigger === 0 && page.list.some(c => c.code !== 0)).map(({event, pageIndex}) => {
+    const cutTargets = active.filter(({page}) => page.trigger === 0).filter(({event, page}) => this.isCutTreeEvent(event, page)).map(({event, pageIndex}) => {
       const pos = this.storyPositions[event.id] || event;
-      return {id: event.id, type: 'STORY', x: (pos.x + .5) * 32, y: (pos.y + .5) * 32, event, pageIndex};
+      return {id: `cut-${event.id}`, type: 'STORY_OBJECT', x: (pos.x + .5) * 32, y: (pos.y + .5) * 32, event, pageIndex};
     });
-    const proxyNpcs = this.storyProxyNpcs.map(proxy => ({...proxy, x: (proxy.x + .5) * 32, y: (proxy.y + .5) * 32}));
-    this.map.npcs = [...nativeNpcs, ...proxyNpcs];
+    const proxyNpcs = this.storyProxyNpcs.map(proxy => ({...proxy, name: proxy.label,
+      x: (proxy.x + .5) * 32, y: (proxy.y + .5) * 32}));
+    this.map.npcs = [...cutTargets, ...proxyNpcs];
     super.update(dt);
   }
   updateNearbyNpc() {
@@ -938,6 +1010,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
     if (!npc.proxy) { this.runStoryEvent(npc.event, npc.pageIndex); return; }
     if (npc.action === 'starter') { this.chooseOutdoorStarter(); return; }
     if (npc.action === 'bill') { this.runBillProxy(npc); return; }
+    if (npc.action === 'ball-shop') { this.runViridianBallShop(); return; }
     this.runStoryProxy(npc.sourceMapId, npc.eventId, undefined, npc);
   }
   handleBallAction() {
@@ -967,6 +1040,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
       const previous = this.storyPosition(id, frame);
       if (local) this.storyPositions[eventId] = {...previous, ...point};
       else this.storySourcePositions[key] = {...previous, ...point};
+      if (local) this.refreshStoryColliders();
     }
   }
   receiveStoryItem(id, amount = 1) {
@@ -1070,6 +1144,7 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
         this.erasedStoryEvents = new Set(this.story.mapEvents.erased);
       }
       this.placeStoryNpcsAtDoors();
+      this.refreshStoryColliders();
       this.syncStoryUnlocks();
       this.storyError = null;
       return true;
@@ -1091,7 +1166,8 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
         entity.drawOverhead(ctx, this.camera);
       }
     }}));
-    this.storyRenderer.draw(ctx, this.camera, this.story, performance.now() / 1000, actors, this.storyPositions, this.erasedStoryEvents);
+    this.storyRenderer.draw(ctx, this.camera, this.story, performance.now() / 1000, actors, this.storyPositions,
+      this.erasedStoryEvents, this.hiddenStoryNativeEvents());
     this.drawStoryProxies(ctx);
     this.combatSystem.drawEffects(ctx, this.camera); this.drawSwitchFlash(); ctx.restore();
     for (const {name, parameters: p} of [...this.pictures.entries()].sort((a, b) => a[0] - b[0]).map(entry => entry[1])) {
