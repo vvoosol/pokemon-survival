@@ -80,6 +80,12 @@ window.SurvivorRPG.StoryGame = class StoryGame extends window.SurvivorRPG.Game {
       event.preventDefault();
       this.answerStory(this.storyDialog.selected);
     });
+    window.addEventListener('keydown', event => {
+      if (event.repeat || !this.storyDialog?.resolve) return;
+      if (event.code !== 'KeyZ' && event.key !== 'z' && event.key !== 'Z') return;
+      event.preventDefault();
+      this.answerStory(this.storyDialog.selected);
+    });
   }
   storyText(text) {
     const translated = this.translateStoryText(String(text));

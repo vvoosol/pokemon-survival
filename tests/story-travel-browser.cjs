@@ -24,11 +24,9 @@ const fs = require('node:fs');
     const openingText = await page.locator('.story-dialog').innerText();
     assert.ok(openingText.includes('오박사에게 가 보자'));
     assert.equal(await page.locator('.gameboy-controls').evaluate(el => getComputedStyle(el).visibility), 'visible');
-    const zBox = await page.locator('#switchActionBtn').boundingBox();
-    assert.ok(zBox);
-    await page.touchscreen.tap(zBox.x + zBox.width / 2, zBox.y + zBox.height / 2);
+    await page.keyboard.press('z');
     await page.waitForFunction(() => !currentSurvivorRPG.storyDialog?.resolve);
-    console.log('PASS opening dialog advances with touch Z');
+    console.log('PASS opening dialog advances with keyboard Z');
     await page.evaluate(async () => {
       const g = currentSurvivorRPG; g.suspended = true;
       g.tick = g.update.bind(g); g.update = () => {};
